@@ -1,0 +1,42 @@
+[
+    {
+        "index": 1770,
+        "name": "Landmark Journal",
+        "baseWeight": 0.75,
+        "hitPoints": 10,
+        "capacityOrTarget": 0,
+        "basePrice": 65,
+        "enchantmentPoints": 0,
+        "rarity": 3,
+        "variants": 0,
+        "drawOrderOrEffect": 0,
+        "isBluntWeapon": false,
+        "isLiquid": false,
+        "isOneHanded": false,
+        "isIngredient": false,
+        "worldTextureArchive": 209,
+        "worldTextureRecord": 1770,
+        "playerTextureArchive": 0,
+        "playerTextureRecord": 0
+    },
+    {
+        "index": 1772,
+        "name": "Mortar & Pestle",
+        "baseWeight": 0.75,
+        "hitPoints": 10,
+        "capacityOrTarget": 0,
+        "basePrice": 55,
+        "enchantmentPoints": 0,
+        "rarity": 3,
+        "variants": 0,
+        "drawOrderOrEffect": 0,
+        "isBluntWeapon": false,
+        "isLiquid": false,
+        "isOneHanded": false,
+        "isIngredient": false,
+        "worldTextureArchive": 218,
+        "worldTextureRecord": 1772,
+        "playerTextureArchive": 0,
+        "playerTextureRecord": 0
+    }
+]

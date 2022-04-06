@@ -1,0 +1,115 @@
+{
+    "Version": "0.80",
+    "Sections": [
+        {
+            "Name": "Features",
+            "Description": "",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Value": true,
+                    "Name": "EnhancedInfo",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": true,
+                    "Name": "DirtyTricks",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": true,
+                    "Name": "Trapping",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": true,
+                    "Name": "Herbalism",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Options": [
+                        "<None>",
+                        "Steal",
+                        "Grab",
+                        "Info",
+                        "Talk"
+                    ],
+                    "Value": 0,
+                    "Name": "Mouse3",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.MultipleChoiceKey"
+                },
+                {
+                    "Options": [
+                        "<None>",
+                        "Steal",
+                        "Grab",
+                        "Info",
+                        "Talk"
+                    ],
+                    "Value": 0,
+                    "Name": "Mouse4",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.MultipleChoiceKey"
+                }
+            ],
+            "$version": "v1"
+        },
+        {
+            "Name": "Options",
+            "Description": "",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Value": true,
+                    "Name": "TeleportMinions",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": false,
+                    "Name": "StartGameWithPotionOfSeeking",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                }
+            ],
+            "$version": "v1"
+        },
+        {
+            "Name": "Advancement",
+            "Description": null,
+            "IsAdvanced": true,
+            "Keys": [
+                {
+                    "Value": false,
+                    "Name": "GoverningAttributes",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Min": 15,
+                    "Max": 30,
+                    "Value": 15,
+                    "Name": "SkillPerLevel",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.SliderIntKey"
+                }
+            ],
+            "$version": "v1"
+        }
+    ]
+}
