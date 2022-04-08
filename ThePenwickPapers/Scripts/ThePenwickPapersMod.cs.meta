@@ -1,0 +1,26 @@
+fileFormatVersion: 2
+guid: bc0c44e870e10f5468435a1a6b080a58
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - SummoningEggTexture: {instanceID: 0}
+  - PeepHoleTexture: {fileID: 2800000, guid: e0948485f6a09c74792f84cd6f724d3c, type: 3}
+  - PeepSlitTexture: {fileID: 2800000, guid: bd88bf705313a2448bc0f274cc620426, type: 3}
+  - GrapplingHookTexture: {fileID: 2800000, guid: a0ec07becfdd1a44dbc234436dc8b2d4,
+      type: 3}
+  - RopeTexture: {fileID: 2800000, guid: 563da6b14eaf8b54ea6d825be44e2d99, type: 3}
+  - WarpIn: {fileID: 8300000, guid: f6009cc36fd88da4286337b5f79a9c28, type: 3}
+  - ReanimateWarp: {fileID: 8300000, guid: b524a30dbe2977945b282feecd85bce8, type: 3}
+  - MaleOi: {fileID: 8300000, guid: 169c22e4a0e165343889f0a62f81c7b8, type: 3}
+  - FemaleLaugh: {fileID: 8300000, guid: 8d25aef9bef2bda479d44a4ee3d2303b, type: 3}
+  - MaleBreath: {fileID: 8300000, guid: eabca41e890e3784e9c883a578c58631, type: 3}
+  - FemaleBreath: {fileID: 8300000, guid: 3a2ce246f1b304747aedfa20014eb830, type: 3}
+  - Creak1: {fileID: 8300000, guid: 71932caba552de546b6144ff74687f93, type: 3}
+  - Creak2: {fileID: 8300000, guid: 89f96c5d42a6f964299df7c0955628b6, type: 3}
+  - WindNoise: {fileID: 8300000, guid: b399bf8b026feba4ea9f2a486bf87aa1, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
