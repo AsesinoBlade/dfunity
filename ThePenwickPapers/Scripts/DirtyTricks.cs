@@ -65,6 +65,12 @@ namespace ThePenwickPapers
                     return false;
                 else if (!(creature.Entity is EnemyEntity))
                     return false;
+                else
+                {
+                    var em = creature.GetComponent<EnemyMotor>();
+                    if (!em.IsHostile)
+                        return false;
+                }
             }
 
             if (mode == PlayerActivateModes.Steal)

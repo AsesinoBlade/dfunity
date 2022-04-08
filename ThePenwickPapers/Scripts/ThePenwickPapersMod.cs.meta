@@ -3,6 +3,7 @@ guid: bc0c44e870e10f5468435a1a6b080a58
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
+<<<<<<< HEAD
   defaultReferences:
   - SummoningEggTexture: {instanceID: 0}
   - PeepHoleTexture: {fileID: 2800000, guid: e0948485f6a09c74792f84cd6f724d3c, type: 3}
@@ -19,6 +20,9 @@ MonoImporter:
   - Creak1: {fileID: 8300000, guid: 71932caba552de546b6144ff74687f93, type: 3}
   - Creak2: {fileID: 8300000, guid: 89f96c5d42a6f964299df7c0955628b6, type: 3}
   - WindNoise: {fileID: 8300000, guid: b399bf8b026feba4ea9f2a486bf87aa1, type: 3}
+=======
+  defaultReferences: []
+>>>>>>> 7c5500f (init)
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
