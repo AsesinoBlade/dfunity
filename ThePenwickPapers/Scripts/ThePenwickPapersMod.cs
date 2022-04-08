@@ -36,6 +36,7 @@ namespace ThePenwickPapers
         int modeSwitchCountdown = 0;
 
         //mod settings
+
         bool enableEnhancedInfo;
         bool enableTrapping;
         bool enableHerbalism;
@@ -44,6 +45,9 @@ namespace ThePenwickPapers
         bool startGameWithPotionOfSeeking;
         bool enableGoverningAttributes;
         bool enableLootAdjustment;
+
+        private static bool kickbackCausesDamage;
+        public static bool KickBackCausesDamage => kickbackCausesDamage;
 
         //assets
         public Texture2D SummoningEggTexture;
@@ -140,7 +144,9 @@ namespace ThePenwickPapers
 
             UsingHiResSprites = ModManager.Instance.GetMod("DREAM - SPRITES") != null;
 
-            InitModSettings();
+            mod.LoadSettingsCallback = LoadSettings;
+            mod.LoadSettings();
+
 
 
             //Make sure all localization text keys have entries in textdatabase.txt
@@ -208,7 +214,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gathers the settings data from the mod settings
         /// </summary>
-        void InitModSettings()
+        private void LoadSettings(ModSettings settings, ModSettingsChange change)
         {
             ModSettings modSettings = mod.GetSettings();
 
@@ -239,6 +245,7 @@ namespace ThePenwickPapers
             PenwickMinion.MinionVolume = modSettings.GetInt(optionsSection, "MinionSoundVolume");
 
             startGameWithPotionOfSeeking = modSettings.GetBool(optionsSection, "StartGameWithPotionOfSeeking");
+            kickbackCausesDamage = modSettings.GetBool(optionsSection, "KickBackCausesDamage");
 
             enableLootAdjustment = modSettings.GetBool(optionsSection, "LootAdjustment");
 

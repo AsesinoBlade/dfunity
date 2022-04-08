@@ -68,7 +68,7 @@ namespace ThePenwickPapers
                 else
                 {
                     var em = creature.GetComponent<EnemyMotor>();
-                    if (!em.IsHostile || !GameManager.Instance.WeaponManager.ScreenWeapon.ShowWeapon)
+                    if (!em.IsHostile )
                         return false;
                 }
             }
@@ -113,6 +113,10 @@ namespace ThePenwickPapers
             }
             else if (EnableTheBoot && mode == PlayerActivateModes.Grab)
             {
+                var em = creature.GetComponent<EnemyMotor>();
+                if (!em.IsHostile || !GameManager.Instance.WeaponManager.ScreenWeapon.ShowWeapon)
+                    return false;
+
                 if (creature && hitInfo.distance <= bootRange)
                 {
                     if (!isShowingHandAnimation)
@@ -623,6 +627,9 @@ namespace ThePenwickPapers
 
             if (Dice100.FailedRoll(hitChance))
                 return;
+
+            if (ThePenwickPapersMod.KickBackCausesDamage)
+                GameManager.Instance.WeaponManager.WeaponDamage(null, false, false, hit.transform, hit.point, GameManager.Instance.MainCamera.transform.forward);
 
             Vector3 playerVelocity = playerController.velocity;
             Vector3 direction = (victim.transform.position - playerMotor.transform.position).normalized;
