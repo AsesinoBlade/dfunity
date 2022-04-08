@@ -68,7 +68,7 @@ namespace ThePenwickPapers
                 else
                 {
                     var em = creature.GetComponent<EnemyMotor>();
-                    if (!em.IsHostile)
+                    if (!em.IsHostile || !GameManager.Instance.WeaponManager.ScreenWeapon.ShowWeapon)
                         return false;
                 }
             }
