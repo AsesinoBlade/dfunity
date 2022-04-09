@@ -503,9 +503,7 @@ namespace ThePenwickPapers
             //Check if victim is at the contact point
             RaycastHit hit;
             if (!Physics.Raycast(playerMotor.transform.position, playerMotor.transform.forward, out hit, 2.3f))
-            {
                 return;
-            }
 
             if (!hit.collider || hit.collider.GetComponent<DaggerfallEntityBehaviour>() != victim)
                 return;
@@ -575,11 +573,7 @@ namespace ThePenwickPapers
         /// </summary>
         private static IEnumerator PeepDoor(RaycastHit hitInfo, DaggerfallActionDoor actionDoor)
         {
-            peeping = true;
-
             Collider door = actionDoor.GetComponent<BoxCollider>();
-
-            GameObject peeper = new GameObject("Penwick Peeper");
 
             bool isCrouching = GameManager.Instance.PlayerMotor.IsCrouching;
 
@@ -588,7 +582,9 @@ namespace ThePenwickPapers
             {
                 //Looking under door
                 RaycastHit floorHit;
-                Physics.Raycast(door.bounds.center, Vector3.down, out floorHit);
+                if (!Physics.Raycast(door.bounds.center, Vector3.down, out floorHit))
+                    yield break;
+
                 pos = floorHit.point;
                 pos.y += 0.1f;
             }
@@ -608,6 +604,10 @@ namespace ThePenwickPapers
                 else
                     pos.z += hOffset;
             }
+
+            peeping = true;
+
+            GameObject peeper = new GameObject("Penwick Peeper");
 
             peeper.transform.position = pos;
 

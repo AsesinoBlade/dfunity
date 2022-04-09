@@ -11,7 +11,6 @@ using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game;
-using DaggerfallWorkshop.Utility;
 using DaggerfallWorkshop.Game.Questing;
 using DaggerfallConnect;
 using DaggerfallWorkshop.Game.Utility;
@@ -24,6 +23,7 @@ namespace ThePenwickPapers
     public class Seeking : IncumbentEffect
     {
         private static readonly string EffectKey = "Seeking";
+        private float lastDirectionTime;
         PotionRecipe seekingRecipe;
 
 
@@ -107,6 +107,12 @@ namespace ThePenwickPapers
 
             if (Dice100.FailedRoll(chance))
                 return;
+
+            //prevent potentially showing quest target info every round...
+            if (Time.time < lastDirectionTime + 8f)
+                return;
+
+            lastDirectionTime = Time.time;
 
             if (!player.IsResting && !player.IsLoitering)
             {
