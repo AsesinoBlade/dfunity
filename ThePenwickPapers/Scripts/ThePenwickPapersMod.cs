@@ -25,10 +25,15 @@ namespace ThePenwickPapers
 
         public static ThePenwickPapersMod Instance;
         public static SaveData Persistent = new SaveData();
+
         public static FPSWeapon TheBootAnimator;
         public static FPSGrapplingHook GrapplingHookAnimator;
         public static FPSHandWave HandWaveAnimator;
         public static bool UsingHiResSprites;
+
+        public static FPSWeapon TheBoot;
+        public static bool IsPeeping = false;
+
 
         int potionOfSeekingRecipeKey;
         bool swallowActions = false;
@@ -37,16 +42,21 @@ namespace ThePenwickPapers
 
         //mod settings
 
-        bool enableEnhancedInfo;
-        bool enableTrapping;
-        bool enableHerbalism;
-        int mouse3Mode;
-        int mouse4Mode;
-        bool startGameWithPotionOfSeeking;
-        bool enableGoverningAttributes;
+        private bool enableEnhancedInfo;
+        private bool enableTrapping;
+        private bool enableHerbalism;
+        private bool enableTeleportMinions;
+        private bool startGameWithPotionOfSeeking;
+        private static bool kickbackCausesDamage;
+        private bool mouse3Check;
+        private int mouse3Mode;
+        private bool mouse4Check;
+        private int mouse4Mode;
+        private bool enableGoverningAttributes;
+        private int skillPerLevel;
+
         bool enableLootAdjustment;
 
-        private static bool kickbackCausesDamage;
         public static bool KickBackCausesDamage => kickbackCausesDamage;
 
         //assets

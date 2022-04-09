@@ -13,7 +13,11 @@ using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallConnect;
 using DaggerfallWorkshop.Game.UserInterfaceWindows;
 using DaggerfallWorkshop.Game.UserInterface;
+
 using DaggerfallWorkshop.Game.Items;
+
+using DaggerfallWorkshop.Game.Utility.ModSupport;
+
 
 namespace ThePenwickPapers
 {
@@ -113,6 +117,9 @@ namespace ThePenwickPapers
             }
             else if (EnableTheBoot && mode == PlayerActivateModes.Grab)
             {
+                if (creature == null)
+                    return false;
+
                 var em = creature.GetComponent<EnemyMotor>();
                 if (!em.IsHostile || !GameManager.Instance.WeaponManager.ScreenWeapon.ShowWeapon)
                     return false;
@@ -670,7 +677,12 @@ namespace ThePenwickPapers
         /// </summary>
         static IEnumerator PeepDoor(RaycastHit hitInfo, DaggerfallActionDoor actionDoor)
         {
+
+            peeping = true;
+            ModManager.Instance.SendModMessage("ToolTips", "peeping", true);
+            DaggerfallUI.Instance.DaggerfallHUD.ShowCrosshair = false;
             Collider door = actionDoor.GetComponent<BoxCollider>();
+            GameObject peeper = new GameObject("Penwick Peeper");
 
             bool isCrouching = GameManager.Instance.PlayerMotor.IsCrouching;
 
@@ -706,9 +718,9 @@ namespace ThePenwickPapers
 
             peeping = true;
 
-            GameObject peeper = new GameObject("Penwick Peeper");
 
             //camera will be placed inside of door, which should allow player to see through the door
+
             peeper.transform.position = pos;
 
             Camera camera = peeper.AddComponent<Camera>();
@@ -740,6 +752,8 @@ namespace ThePenwickPapers
             GameObject.Destroy(peeper);
             hud.ParentPanel.BackgroundTexture = null;
             peeping = false;
+            ModManager.Instance.SendModMessage("ToolTips", "peeping", false);
+            DaggerfallUI.Instance.DaggerfallHUD.ShowCrosshair = DaggerfallUnity.Settings.Crosshair;
         }
 
 
