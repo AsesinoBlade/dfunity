@@ -98,7 +98,7 @@ namespace ThePenwickPapers
             HandWaveAnimator = go.AddComponent<FPSHandWave>();
             HandWaveAnimator.enabled = false;
 
-            missingTextSubstring = UnityEngine.Localization.Settings.LocalizationSettings.StringDatabase.NoTranslationFoundMessage.Substring(0, 14);
+            missingTextSubstring = "String not found.";
 
             mod.IsReady = true;
         }
@@ -623,8 +623,9 @@ namespace ThePenwickPapers
             if (enableHerbalism)
             {
                 //give the player starting herbalism equipment if high enough medical skill
+
                 int medical = player.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
-                if (medical >= 23)
+                if (medical > 19)
                 {
                     DaggerfallUnityItem item = ItemBuilder.CreateItem(ItemGroups.MiscellaneousIngredients2, MortarAndPestle.MortarAndPestleTemplateIndex);
                     player.Items.AddItem(item);
