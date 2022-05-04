@@ -677,13 +677,11 @@ namespace ThePenwickPapers
         /// </summary>
         static IEnumerator PeepDoor(RaycastHit hitInfo, DaggerfallActionDoor actionDoor)
         {
-
             peeping = true;
             ModManager.Instance.SendModMessage("ToolTips", "peeping", true);
             DaggerfallUI.Instance.DaggerfallHUD.ShowCrosshair = false;
-            Collider door = actionDoor.GetComponent<BoxCollider>();
-            GameObject peeper = new GameObject("Penwick Peeper");
 
+            Collider door = actionDoor.GetComponent<BoxCollider>();
             bool isCrouching = GameManager.Instance.PlayerMotor.IsCrouching;
 
             Vector3 pos;
@@ -710,6 +708,7 @@ namespace ThePenwickPapers
                 pos.y = GameManager.Instance.PlayerMotor.transform.position.y;
                 pos.y += vOffset; //waist-height plus offset
                 bool northSouthDoor = Vector3.Angle(hitInfo.normal, Vector3.forward) != 90;
+
                 if (northSouthDoor)
                     pos.x += hOffset;
                 else
@@ -720,6 +719,10 @@ namespace ThePenwickPapers
 
 
             //camera will be placed inside of door, which should allow player to see through the door
+
+            ModManager.Instance.SendModMessage("ToolTips", "peeping", true);
+            DaggerfallUI.Instance.DaggerfallHUD.ShowCrosshair = false;
+            GameObject peeper = new GameObject("Penwick Peeper");
 
             peeper.transform.position = pos;
 
