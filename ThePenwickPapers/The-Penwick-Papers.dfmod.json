@@ -1,9 +1,9 @@
 {
     "ModTitle": "The-Penwick-Papers",
-    "ModVersion": "0.80",
+    "ModVersion": "0.82",
     "ModAuthor": "DunnyOfPenwick",
     "ContactInfo": "http://dfworkshop.net",
-    "DFUnity_Version": "0.13.5",
+    "DFUnity_Version": "0.14.0",
     "ModDescription": "A collection of useful features, spells, and items",
     "GUID": "c7a201b3-3b41-4c44-a5c6-f86c77cca630",
     "Files": [
@@ -50,6 +50,7 @@
         "Assets/Game/Mods/ThePenwickPapers/Scripts/Utility.cs",
         "Assets/Game/Mods/ThePenwickPapers/Textures/PeepHole.png",
         "Assets/Game/Mods/ThePenwickPapers/Textures/PeepSlit.png",
-        "Assets/Game/Mods/ThePenwickPapers/Scripts/SkillAdvancement.cs"
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/SkillAdvancement.cs",
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/Loot.cs"
     ]
 }

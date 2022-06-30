@@ -101,7 +101,7 @@ namespace ThePenwickPapers
             PlayerEntity player = GameManager.Instance.PlayerEntity;
 
             //need some peace and contemplation
-            int chance = player.Stats.GetLiveStatValue(DFCareer.Stats.Willpower) - 10;
+            int chance = player.Stats.GetLiveStatValue(DFCareer.Stats.Willpower) / 2;
             if (Utility.IsPlayerThreatened())
                 chance -= 50;
 
@@ -109,7 +109,7 @@ namespace ThePenwickPapers
                 return;
 
             //prevent potentially showing quest target info every round...
-            if (Time.time < lastDirectionTime + 8f)
+            if (Time.time < lastDirectionTime + 6f)
                 return;
 
             lastDirectionTime = Time.time;
@@ -154,12 +154,7 @@ namespace ThePenwickPapers
             if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
             {
                 ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                ParentBundle.icon.index = 190; //eye
-            }
-            else if (DaggerfallUI.Instance.SpellIconCollection.HasPack("vmblast-test"))
-            {
-                ParentBundle.icon.key = "vmblast-test";
-                ParentBundle.icon.index = 40; //swirly blue spiral thing
+                ParentBundle.icon.index = 187; //blueish eye
             }
         }
 
@@ -225,7 +220,7 @@ namespace ThePenwickPapers
         /// </summary>
         private void EvaluateQuestTargetResource(QuestResourceBehaviour target)
         {
-            QuestResourceBehaviour[] questItems = UnityEngine.Object.FindObjectsOfType<QuestResourceBehaviour>();
+            QuestResourceBehaviour[] questItems = GameObject.FindObjectsOfType<QuestResourceBehaviour>();
             
             if (target.TargetResource is Item)
             {

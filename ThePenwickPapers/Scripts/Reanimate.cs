@@ -33,6 +33,17 @@ namespace ThePenwickPapers
         private int soulChanceMod = 0;
 
 
+        /// <summary>
+        /// The soul value is used to determine the type of reanimated entity, its starting health,
+        /// and the caster's ability to control it.
+        /// </summary>
+        public static int GetSoulValue(MobileTypes soulType)
+        {
+            return (int)soulType < soulStrength.Length ? soulStrength[(int)soulType] : 50;
+        }
+
+
+
         public override void SetProperties()
         {
             properties.Key = effectKey;
@@ -211,7 +222,7 @@ namespace ThePenwickPapers
 
             Caster.Entity.DecreaseHealth(1);
             Caster.Entity.DecreaseFatigue(10, true);
-            RemoveSoulTrap(souls[soulIndex]);
+            RemoveSoul(souls[soulIndex]);
 
             AdjustFactionReps(); //those Divines are loving you now
         }
@@ -224,7 +235,7 @@ namespace ThePenwickPapers
         {
             List<MobileTypes> filledTraps = new List<MobileTypes>();
 
-            // Count regular filled soul traps
+            // Count regular filled soul gems
             ItemCollection casterItems = Caster.Entity.Items;
             for (int i = 0; i < casterItems.Count; i++)
             {
@@ -255,7 +266,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Remove the spent soul gem from the PC inventory (or clean out Azura's Star)
         /// </summary>
-        void RemoveSoulTrap(MobileTypes soulType)
+        void RemoveSoul(MobileTypes soulType)
         {
             // Remove regular filled soul traps matching soul type first
             ItemCollection casterItems = Caster.Entity.Items;
@@ -266,7 +277,8 @@ namespace ThePenwickPapers
                 {
                     if (item.TrappedSoulType == soulType)
                     {
-                        casterItems.RemoveOne(item);
+                        //remove the soul, not the soul gem
+                        item.TrappedSoulType = MobileTypes.None;
                         return;
                     }
                 }
@@ -281,6 +293,7 @@ namespace ThePenwickPapers
                     if (amulet.TrappedSoulType == soulType)
                     {
                         amulet.TrappedSoulType = MobileTypes.None;
+                        return;
                     }
                 }
             }
@@ -299,14 +312,14 @@ namespace ThePenwickPapers
 
             AdjustFactionRep((int)FactionFile.FactionIDs.Generic_Temple, -2);
 
-            AdjustFactionRep((int)(int)Temple.Divines.Akatosh, -3);
-            AdjustFactionRep((int)(int)Temple.Divines.Arkay, -9);
-            AdjustFactionRep((int)(int)Temple.Divines.Dibella, -3);
-            AdjustFactionRep((int)(int)Temple.Divines.Julianos, -1);
-            AdjustFactionRep((int)(int)Temple.Divines.Kynareth, -3);
-            AdjustFactionRep((int)(int)Temple.Divines.Mara, -4);
-            AdjustFactionRep((int)(int)Temple.Divines.Stendarr, -4);
-            AdjustFactionRep((int)(int)Temple.Divines.Zenithar, -3);
+            AdjustFactionRep((int)Temple.Divines.Akatosh, -3);
+            AdjustFactionRep((int)Temple.Divines.Arkay, -9);
+            AdjustFactionRep((int)Temple.Divines.Dibella, -3);
+            AdjustFactionRep((int)Temple.Divines.Julianos, -1);
+            AdjustFactionRep((int)Temple.Divines.Kynareth, -3);
+            AdjustFactionRep((int)Temple.Divines.Mara, -4);
+            AdjustFactionRep((int)Temple.Divines.Stendarr, -4);
+            AdjustFactionRep((int)Temple.Divines.Zenithar, -3);
 
             AdjustFactionRep((int)FactionFile.FactionIDs.Meridia, -6);
 
@@ -474,8 +487,6 @@ namespace ThePenwickPapers
             //needs a loadID to save/serialize
             minion.LoadID = DaggerfallUnity.NextUID;
 
-            GameManager.Instance.RaiseOnEnemySpawnEvent(go);
-
             //Have the reanimated entity looking in same direction as caster
             minion.transform.rotation = Caster.transform.rotation;
 
@@ -514,18 +525,25 @@ namespace ThePenwickPapers
 
             if (mobileEnemy.ID == (int)MobileTypes.Zombie)
             {
-                //In vanilla Daggerfall, zombies have a narrower health range (52-66).
-                mobileEnemy.MinHealth += GetSoulValue(soulType) / 4 - 2;
+                //In vanilla Daggerfall, zombies have a narrow health range (52-66).
+                mobileEnemy.MinHealth = 52 + GetSoulValue(soulType) / 4;
+            }
+            else if (mobileEnemy.ID == (int)MobileTypes.SkeletalWarrior || mobileEnemy.ID == (int)MobileTypes.Mummy)
+            {
+                //In vanilla Daggerfall, skeletons and mummies have a wide health range (17-66).
+                mobileEnemy.MinHealth = 17 + GetSoulValue(soulType);
+            }
+            else if (mobileEnemy.ID == (int)MobileTypes.Lich || mobileEnemy.ID == (int)MobileTypes.AncientLich)
+            {
+                //In vanilla Daggerfall, liches have a wide health range (30-170).
+                mobileEnemy.MinHealth = 40 + GetSoulValue(soulType);
             }
             else
             {
-                //In vanilla Daggerfall, skeletons and mummies have a wider health range (17-66).
-                //Lich/Ancient Lich also have a very wide range (30-170)
-                //Note that skellies/mummies can have a bunch of hitpoints if using a powerful soul.
-                mobileEnemy.MinHealth += GetSoulValue(soulType) - 2;
+                mobileEnemy.MinHealth += GetSoulValue(soulType);
             }
 
-            int luckMod = Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck) / 10;
+            int luckMod = Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck) / 12;
 
             mobileEnemy.MaxHealth = mobileEnemy.MinHealth + luckMod;
 
@@ -549,16 +567,6 @@ namespace ThePenwickPapers
 
             //Since we made changes to MobileEnemy, we have to reset the enemy career
             entity.SetEnemyCareer(mobileEnemy, behaviour.EntityType);
-        }
-
-
-        /// <summary>
-        /// The soul value is used to determine the type of reanimated entity, its starting health,
-        /// and the caster's ability to control it.
-        /// </summary>
-        private int GetSoulValue(MobileTypes soulType)
-        {
-            return (int)soulType < soulStrength.Length ? soulStrength[(int)soulType] : 30;
         }
 
 

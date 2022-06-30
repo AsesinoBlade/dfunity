@@ -34,15 +34,14 @@ namespace ThePenwickPapers
 
         //mod settings
         private bool enableEnhancedInfo;
-        private bool enableDirtyTricks;
         private bool enableTrapping;
         private bool enableHerbalism;
-        private bool enableTeleportMinions;
-        private bool startGameWithPotionOfSeeking;
         private bool mouse3Check;
         private PlayerActivateModes mouse3Mode;
         private bool mouse4Check;
         private PlayerActivateModes mouse4Mode;
+        private bool enableTeleportMinions;
+        private bool startGameWithPotionOfSeeking;
         private bool enableGoverningAttributes;
         private int skillPerLevel;
 
@@ -78,7 +77,7 @@ namespace ThePenwickPapers
             TheBoot.WeaponType = WeaponTypes.Melee;
             TheBoot.ShowWeapon = false;
 
-            missingTextSubstring = UnityEngine.Localization.Settings.LocalizationSettings.StringDatabase.NoTranslationFoundFormat.Substring(0, 15);
+            missingTextSubstring = UnityEngine.Localization.Settings.LocalizationSettings.StringDatabase.NoTranslationFoundMessage.Substring(0, 14);
 
             mod.IsReady = true;
         }
@@ -99,7 +98,8 @@ namespace ThePenwickPapers
         public static bool TextExists(string key)
         {
             string result = GetText(key);
-            return result.StartsWith(missingTextSubstring) == false;
+
+            return !result.StartsWith(missingTextSubstring);
         }
 
 
@@ -111,6 +111,11 @@ namespace ThePenwickPapers
             Instance.swallowActions = false;
         }
 
+
+        public int GetPotionOfSeekingRecipeKey()
+        {
+            return potionOfSeekingRecipeKey;
+        }
 
 
         public Type SaveDataType
@@ -159,6 +164,7 @@ namespace ThePenwickPapers
             DaggerfallWorkshop.Game.UserInterfaceWindows.DaggerfallRestWindow.OnSleepEnd += DaggerfallRestWindow_OnSleepEndHandler;
             PlayerEnterExit.OnTransitionExterior += PlayerEnterExit_OnTransitionExteriorHandler;
             PlayerEnterExit.OnTransitionDungeonExterior += PlayerEnterExit_OnTransitionDungeonExteriorHandler;
+            GameManager.OnEnemySpawn += GameManager_OnEnemySpawnHandler;
 
             //load resources
             LoadTextures();
@@ -193,7 +199,7 @@ namespace ThePenwickPapers
 
             CheckUndeadInTown();
 
-            if (enableDirtyTricks)
+            if (DirtyTricks.EnableBlinding)
             {
                 DirtyTricks.CheckEnemyBlindAttempt();
             }
@@ -215,11 +221,15 @@ namespace ThePenwickPapers
 
             enableEnhancedInfo = modSettings.GetBool(featuresSection, "EnhancedInfo");
 
-            enableDirtyTricks = modSettings.GetBool(featuresSection, "DirtyTricks");
-
             enableTrapping = modSettings.GetBool(featuresSection, "Trapping");
 
             enableHerbalism = modSettings.GetBool(featuresSection, "Herbalism");
+
+            DirtyTricks.EnableBlinding = modSettings.GetBool(featuresSection, "DirtyTricks-Blinding");
+            DirtyTricks.EnableChock = modSettings.GetBool(featuresSection, "DirtyTricks-Chock");
+            DirtyTricks.EnableDiversion = modSettings.GetBool(featuresSection, "DirtyTricks-Diversion");
+            DirtyTricks.EnableTheBoot = modSettings.GetBool(featuresSection, "DirtyTricks-TheBoot");
+            DirtyTricks.EnablePeep = modSettings.GetBool(featuresSection, "DirtyTricks-Peep");
 
             mouse3Check = true;
             mouse4Check = true;
@@ -331,7 +341,7 @@ namespace ThePenwickPapers
                         actionHandled = Trapping.AttemptLayTrap(hitInfo);
                     }
 
-                    if (!actionHandled && enableDirtyTricks)
+                    if (!actionHandled)
                     {
                         actionHandled = DirtyTricks.CheckAttemptTrick(hitInfo);
                     }
@@ -566,33 +576,35 @@ namespace ThePenwickPapers
         /// </summary>
         private void StartGameBehaviour_OnStartGameHandler(object sender, EventArgs e)
         {
+            PlayerEntity player = GameManager.Instance.PlayerEntity;
+
             if (startGameWithPotionOfSeeking)
             {
                 //when new character is created, add Potion Of Seeking recipe to their inventory
                 DaggerfallUnityItem potionRecipe = new DaggerfallUnityItem(ItemGroups.MiscItems, 4) { PotionRecipeKey = potionOfSeekingRecipeKey };
-                GameManager.Instance.PlayerEntity.Items.AddItem(potionRecipe);
+                player.Items.AddItem(potionRecipe);
 
                 //player must have nabbed a potion from a kiosk
                 DaggerfallUnityItem item = ItemBuilder.CreatePotion(potionOfSeekingRecipeKey);
-                GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                player.Items.AddItem(item);
             }
 
             if (enableHerbalism)
             {
                 //give the player starting herbalism equipment if high enough medical skill
-                int medical = GameManager.Instance.PlayerEntity.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
-                if (medical >= 25)
+                int medical = player.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
+                if (medical >= 23)
                 {
                     DaggerfallUnityItem item = ItemBuilder.CreateItem(ItemGroups.MiscellaneousIngredients2, MortarAndPestle.MortarAndPestleTemplateIndex);
-                    GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                    player.Items.AddItem(item);
                     item = ItemBuilder.CreateItem(ItemGroups.PlantIngredients2, (int)PlantIngredients2.Bamboo);
-                    GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                    player.Items.AddItem(item);
                     item = ItemBuilder.CreateItem(ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Rain_water);
-                    GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                    player.Items.AddItem(item);
                     item = ItemBuilder.CreateItem(ItemGroups.PlantIngredients1, (int)PlantIngredients1.Root_bulb);
-                    GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                    player.Items.AddItem(item);
                     item = ItemBuilder.CreateItem(ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Elixir_vitae);
-                    GameManager.Instance.PlayerEntity.Items.AddItem(item);
+                    player.Items.AddItem(item);
                 }
             }
         }
@@ -641,6 +653,15 @@ namespace ThePenwickPapers
         private void PlayerDeath_OnPlayerDeathHandler(object sender, EventArgs e)
         {
             WindWalk.Reset();
+        }
+
+
+        /// <summary>
+        /// Event handler triggered when new enemy spawns
+        /// </summary>
+        private void GameManager_OnEnemySpawnHandler(GameObject enemy)
+        {
+            Loot.AddItems(enemy);
         }
 
 

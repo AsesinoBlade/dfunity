@@ -23,6 +23,12 @@ namespace ThePenwickPapers
         private const float bootRange = 7.0f; //max range at which player can *begin* a boot attempt
         private const float peepRange = 0.6f;
 
+        public static bool EnableBlinding = false;
+        public static bool EnableChock = false;
+        public static bool EnableDiversion = false;
+        public static bool EnableTheBoot = false;
+        public static bool EnablePeep = false;
+
         private static float lastDiversionAttempt = -15f;
         private static float lastPlayerBlindAttempt = -15f;
         private static float lastEnemyBlindAttempt = -15f;
@@ -61,7 +67,7 @@ namespace ThePenwickPapers
                 bool isTerrain = hitInfo.collider is TerrainCollider || hitInfo.collider is MeshCollider;
                 DaggerfallActionDoor door = hitInfo.collider.GetComponent<DaggerfallActionDoor>();
 
-                if (creature && hitInfo.distance <= blindRange)
+                if (EnableBlinding && creature && hitInfo.distance <= blindRange)
                 {
                     bool isFacing = IsFacingTrickster(creature, GameManager.Instance.PlayerEntityBehaviour);
                     if (isFacing)
@@ -70,7 +76,7 @@ namespace ThePenwickPapers
                         return true;
                     }
                 }
-                else if (door && door.IsClosed && hitInfo.distance <= PlayerActivate.DoorActivationDistance)
+                else if (EnableChock && door && door.IsClosed && hitInfo.distance <= PlayerActivate.DoorActivationDistance)
                 {
                     if (!door.IsLocked)
                         return ChockDoor(door);
@@ -79,13 +85,13 @@ namespace ThePenwickPapers
                     else    
                         return false;
                 }
-                else if (isTerrain && hitInfo.distance > 5)
+                else if (EnableDiversion && isTerrain && hitInfo.distance > 5)
                 {
                     AttemptDiversion(hitInfo);
                     return true;
                 }
             }
-            else if (mode == PlayerActivateModes.Grab)
+            else if (EnableTheBoot && mode == PlayerActivateModes.Grab)
             {
                 if (creature && hitInfo.distance <= bootRange)
                 {
@@ -93,7 +99,7 @@ namespace ThePenwickPapers
                     return true;
                 }
             }
-            else if (mode == PlayerActivateModes.Info && hitInfo.distance <= peepRange)
+            else if (EnablePeep && mode == PlayerActivateModes.Info && hitInfo.distance <= peepRange)
             {
                 DaggerfallActionDoor door = hitInfo.collider.GetComponent<DaggerfallActionDoor>();
                 if (door && door.IsClosed)
@@ -122,13 +128,10 @@ namespace ThePenwickPapers
             if (Time.time < lastEnemyBlindAttempt + 25)
                 return;
 
-            DaggerfallEntityBehaviour[] enemyBehaviours = Object.FindObjectsOfType<DaggerfallEntityBehaviour>();
+            List<DaggerfallEntityBehaviour> enemyBehaviours = Utility.GetNearbyEntities();
 
             foreach (DaggerfallEntityBehaviour behaviour in enemyBehaviours)
             {
-                if (behaviour.EntityType == EntityTypes.Player)
-                    continue;
-
                 EnemySenses senses = behaviour.GetComponent<EnemySenses>();
 
                 if (senses == null || senses.Target == null)
@@ -403,23 +406,19 @@ namespace ThePenwickPapers
             DaggerfallAudioSource dfAudioSource = DaggerfallUI.Instance.GetComponent<DaggerfallAudioSource>();
             dfAudioSource.PlayClipAtPoint(SoundClips.DiceRoll2, location, 1.0f);
 
-            DaggerfallEntityBehaviour[] enemyBehaviours = Object.FindObjectsOfType<DaggerfallEntityBehaviour>();
+            List<DaggerfallEntityBehaviour> enemyBehaviours = Utility.GetNearbyEntities(location, 11);
 
             foreach (DaggerfallEntityBehaviour behaviour in enemyBehaviours)
             {
-                if (behaviour.EntityType == EntityTypes.Player)
+                if (!(behaviour.Entity is EnemyEntity))
                     continue;
 
-                EnemySenses senses = behaviour.GetComponent<EnemySenses>();
                 EnemyEntity entity = behaviour.Entity as EnemyEntity;
+                EnemySenses senses = behaviour.GetComponent<EnemySenses>();
 
                 if (senses == null || senses.Target != null)
                     continue;    //if target is engaged, ignore diversions
-                else if (!behaviour.gameObject.activeInHierarchy)
-                    continue;
                 else if (behaviour.gameObject.name.StartsWith(IllusoryDecoy.DecoyGameObjectPrefix))
-                    continue;
-                else if (Vector3.Distance(location, behaviour.transform.position) > 10.0f)
                     continue;
                 else if (entity.Team == MobileTeams.PlayerAlly)
                     continue;
@@ -431,7 +430,7 @@ namespace ThePenwickPapers
             yield return new WaitForSeconds(4);
 
             //finally, destroy the temporary diversion object
-            Object.Destroy(diversion.gameObject);
+            GameObject.Destroy(diversion.gameObject);
         }
 
 
@@ -462,15 +461,13 @@ namespace ThePenwickPapers
         {
             int hitFrame = ThePenwickPapersMod.TheBoot.GetHitFrame();
 
-            while (ThePenwickPapersMod.TheBoot.GetCurrentFrame() != hitFrame)
+            while (ThePenwickPapersMod.TheBoot.IsAttacking() && ThePenwickPapersMod.TheBoot.GetCurrentFrame() < hitFrame)
                 yield return new WaitForSeconds(0.02f);
 
             CheckKnockAttempt(victim);
 
             while (ThePenwickPapersMod.TheBoot.IsAttacking() && ThePenwickPapersMod.TheBoot.GetCurrentFrame() < 4)
-            {
                 yield return null;
-            }
 
             ThePenwickPapersMod.TheBoot.ChangeWeaponState(WeaponStates.Idle);
             ThePenwickPapersMod.TheBoot.ShowWeapon = false;
@@ -488,7 +485,7 @@ namespace ThePenwickPapers
 
             float fatigueLossMultiplier = 1.0f;
             if (player.Career.Athleticism)
-                fatigueLossMultiplier = (player.ImprovedAthleticism) ? 0.8f : 0.9f;
+                fatigueLossMultiplier = (player.ImprovedAthleticism) ? 0.6f : 0.8f;
 
             player.DecreaseFatigue((int)(22 * fatigueLossMultiplier));
 

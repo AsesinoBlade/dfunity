@@ -47,7 +47,7 @@ namespace ThePenwickPapers
             { DFCareer.Skills.Nymph, 0.50 },
             { DFCareer.Skills.Orcish, 0.50 },
             { DFCareer.Skills.Pickpocket, 0.80 },
-            { DFCareer.Skills.Restoration, 0.60 },
+            { DFCareer.Skills.Restoration, 0.80 },
             { DFCareer.Skills.Running, 1.00 },
             { DFCareer.Skills.ShortBlade, 1.25 },
             { DFCareer.Skills.Spriggan, 0.50 },

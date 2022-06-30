@@ -193,10 +193,10 @@ namespace ThePenwickPapers
             if (ParentBundle.icon.index == 0)
             {
                 ParentBundle.icon.index = 37; //dark cloud thing
-                if (DaggerfallUI.Instance.SpellIconCollection.HasPack("vmblast-test"))
+                if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
                 {
-                    ParentBundle.icon.key = "vmblast-test";
-                    ParentBundle.icon.index = 56; //green eye
+                    ParentBundle.icon.key = "D.R.E.A.M. Icons";
+                    ParentBundle.icon.index = 126; //dark cloud
                 }
             }
 

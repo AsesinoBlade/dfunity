@@ -168,22 +168,14 @@ namespace ThePenwickPapers
                 if (senses.Target == player || senses.SecondaryTarget == player)
                 {
                     if (mobileEnemy.Affinity == MobileAffinity.Animal)
-                    {
                         disposition = Text.Hungry.Get();
-                    }
                     else
-                    {
                         disposition = Text.Hostile.Get();
-                    }
                 }
                 else if (senses.Target == null)
-                {
                     disposition = Text.Unaware.Get();
-                }
                 else
-                {
                     disposition = Text.Distracted.Get();
-                }
             }
             else
             {

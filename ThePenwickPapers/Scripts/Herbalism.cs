@@ -923,10 +923,10 @@ namespace ThePenwickPapers
         private void InitRemedy()
         {
             ParentBundle.icon.index = 41; //blue-green puff
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("vmblast-test"))
+            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
             {
-                ParentBundle.icon.key = "vmblast-test";
-                ParentBundle.icon.index = 8; //blue retort thing
+                ParentBundle.icon.key = "D.R.E.A.M. Icons";
+                ParentBundle.icon.index = 220; //green leaves
             }
 
             //The remedy index is being stored in the ChanceBase effect value
@@ -965,7 +965,6 @@ namespace ThePenwickPapers
     public class Envenomed : IncumbentEffect
     {
         private Herbalism.Remedy remedy;
-        private HashSet<DaggerfallUnityItem> poisonedWeapons = new HashSet<DaggerfallUnityItem>();
 
         public const string EnvenomedEffectKey = "Envenomed";
 
@@ -1010,22 +1009,10 @@ namespace ThePenwickPapers
             EnvenomWeapons();
         }
 
-        public override void End()
-        {
-            base.End();
-
-            foreach (DaggerfallUnityItem item in poisonedWeapons)
-                item.poisonType = Poisons.None;
-        }
-
-
         public void ExitState()
         {
             ResignAsIncumbent();
             RoundsRemaining = 0;
-
-            foreach (DaggerfallUnityItem item in poisonedWeapons)
-                item.poisonType = Poisons.None;
         }
 
 
@@ -1047,11 +1034,11 @@ namespace ThePenwickPapers
         /// </summary>
         private void EnvenomWeapons()
         {
-            ParentBundle.icon.index = 46; //green puff
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("vmblast-test"))
+            ParentBundle.icon.index = 67; //greenish streak
+            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
             {
-                ParentBundle.icon.key = "vmblast-test";
-                ParentBundle.icon.index = 68; //green 'retort' thing
+                ParentBundle.icon.key = "D.R.E.A.M. Icons";
+                ParentBundle.icon.index = 100; //green dagger
             }
 
             //The remedy index is being stored in the ChanceBase effect value
@@ -1075,7 +1062,6 @@ namespace ThePenwickPapers
                 if (skill == (int)DFCareer.ProficiencyFlags.ShortBlades || skill == (int)DFCareer.ProficiencyFlags.MissileWeapons)
                 {
                     item.poisonType = poisonType;
-                    poisonedWeapons.Add(item);
                 }
             }
         }

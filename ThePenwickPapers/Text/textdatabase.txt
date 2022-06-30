@@ -6,25 +6,36 @@ schema: *key,text
 Settings.Features.Name, Features
 Settings.Features.EnhancedInfo.Name, Enhanced Info
 Settings.Features.EnhancedInfo.Description, Show extra information when clicking a creature or NPC while in 'Info' mode
-Settings.Features.DirtyTricks.Name, Dirty Tricks
-Settings.Features.DirtyTricks.Description, Enable blinding/distraction/chock in 'Steal' mode; The Boot in 'Grab' mode; door peep in 'Info' mode
 Settings.Features.Trapping.Name, Trapping
 Settings.Features.Trapping.Description, Create traps by crouching and clicking on ground while in 'Steal' mode
 Settings.Features.Herbalism.Name, Herbalism
-Settings.Features.Herbalism.Description, Create herbalism remedies by crouching and clicking on ground while in 'Grab' mode
+Settings.Features.Herbalism.Description, Create herbal remedies by crouching and clicking on ground while in 'Grab' mode
+Settings.Features.DirtyTricks-Blinding.Name, Dirty Tricks - Blinding
+Settings.Features.DirtyTricks-Blinding.Description, Enable blinding when clicking a facing enemy while in 'Steal' mode; some enemies can blind the player
+Settings.Features.DirtyTricks-Chock.Name, Dirty Tricks - Door Chock
+Settings.Features.DirtyTricks-Chock.Description, Enable door chocking when clicking on inward opening door while in 'Steal' mode
+Settings.Features.DirtyTricks-Diversion.Name, Dirty Tricks - Diversion
+Settings.Features.DirtyTricks-Diversion.Description, Enable diversion when clicking on distant floor/wall while in 'Steal' mode
+Settings.Features.DirtyTricks-TheBoot.Name, Dirty Tricks - The Boot
+Settings.Features.DirtyTricks-TheBoot.Description, Enable The Boot when clicking on enemy while in 'Grab' mode
+Settings.Features.DirtyTricks-Peep.Name, Dirty Tricks - Door Peep
+Settings.Features.DirtyTricks-Peep.Description, Enable Door Peeping when clicking a nearby door while in 'Info' mode; peep under door if crouching
 Settings.Features.Mouse3.Name, Mouse Button 3 Action
 Settings.Features.Mouse3.Description, Select one-shot action for mouse button 3
 Settings.Features.Mouse4.Name, Mouse Button 4 Action
 Settings.Features.Mouse4.Description, Select one-shot action for mouse button 4
 
 Settings.Options.Name, Options
-Settings.Options.Description, Select options to enable
 Settings.Options.TeleportMinions.Name, Teleport Minions
 Settings.Options.TeleportMinions.Description, Automatically teleport minions (atronachs/undead) to your location if they fall too far behind
 Settings.Options.StartGameWithPotionOfSeeking.Name, Start Games With Potion Of Seeking
 Settings.Options.StartGameWithPotionOfSeeking.Description, Start new games with Potion Of Seeking and its recipe in your inventory
 Settings.Options.SkillSmoothing.Name, Skill Smoothing
 Settings.Options.SkillSmoothing.Description, Alters skill advancement to a degree - requires Governing Attributes feature enabled
+
+Settings.Space1.Name, ·
+Settings.Space2.Name, ·
+Settings.Space3.Name, ·
 
 Settings.Advancement.GoverningAttributes.Name, Governing Attributes
 Settings.Advancement.GoverningAttributes.Description, Implements governing attributes for skills as implied in game documentation; alters skill advancement rate

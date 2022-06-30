@@ -5,6 +5,7 @@
 using System.Collections;
 using UnityEngine;
 using DaggerfallWorkshop;
+using DaggerfallWorkshop.Game;
 
 namespace ThePenwickPapers
 {
@@ -90,6 +91,8 @@ namespace ThePenwickPapers
             GameObject.Destroy(outerEgg);
 
             creature.gameObject.SetActive(true);
+            GameManager.Instance.RaiseOnEnemySpawnEvent(creature.gameObject);
+
         }
 
 

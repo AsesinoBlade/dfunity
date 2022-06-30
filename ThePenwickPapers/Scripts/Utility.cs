@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DaggerfallWorkshop;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Entity;
@@ -63,22 +64,60 @@ namespace ThePenwickPapers
         }
 
 
+        public static List<DaggerfallEntityBehaviour> GetNearbyEntities(float range = 14)
+        {
+            List<DaggerfallEntityBehaviour> entities = new List<DaggerfallEntityBehaviour>();
+
+            List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Enemy, range);
+            foreach (PlayerGPS.NearbyObject obj in nearby)
+            {
+                if (obj.gameObject && obj.gameObject.activeInHierarchy)
+                {
+                    DaggerfallEntityBehaviour entity = obj.gameObject.GetComponent<DaggerfallEntityBehaviour>();
+                    if (entity)
+                        entities.Add(entity);
+                }
+            }
+
+            return entities;
+        }
+
+
+        public static List<DaggerfallEntityBehaviour> GetNearbyEntities(Vector3 location, float range)
+        {
+            List<DaggerfallEntityBehaviour> entities = GetNearbyEntities(40);
+
+            List<DaggerfallEntityBehaviour> near = new List<DaggerfallEntityBehaviour>();
+
+            foreach (DaggerfallEntityBehaviour entity in entities)
+            {
+                float distance = Vector3.Distance(location, entity.transform.position);
+                if (distance <= range)
+                    near.Add(entity);
+            }
+
+            return near;
+        }
+
+
         public static bool IsPlayerThreatened()
         {
-            DaggerfallEntityBehaviour[] creatures = GameObject.FindObjectsOfType<DaggerfallEntityBehaviour>();
+            List<DaggerfallEntityBehaviour> creatures = GetNearbyEntities();
 
             foreach (DaggerfallEntityBehaviour creature in creatures)
             {
                 EnemySenses senses = creature.GetComponent<EnemySenses>();
+                EnemyMotor motor = creature.GetComponent<EnemyMotor>();
+
                 if (!senses)
+                    continue;
+                else if (!motor)
                     continue;
                 else if (senses.Target != GameManager.Instance.PlayerEntityBehaviour)
                     continue;
-                else if (creature.EntityType == EntityTypes.Player)
-                    continue;
                 else if (creature.Entity.Team == MobileTeams.PlayerAlly)
                     continue;
-                else if (!creature.GetComponent<EnemyMotor>().IsHostile)
+                else if (!motor.IsHostile)
                     continue;
                 else if (CanSeePlayer(creature))
                     return true;

@@ -3,11 +3,9 @@
         "Title": "The Penwick Papers",
         "Author": "DunnyOfPenwick",
         "Description": "A collection of useful features, spells, and items",
-        "SettingsVersion": "0.80",
+        "SettingsVersion": "0.82",
         "Values": {
-            "RegisterSpellAndPotionEffects": {
 
-            }
         },
         "$version": "v1"
     }

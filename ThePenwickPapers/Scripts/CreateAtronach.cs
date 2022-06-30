@@ -298,8 +298,6 @@ namespace ThePenwickPapers
             //needs a loadID to save/serialize
             creature.LoadID = DaggerfallUnity.NextUID;
 
-            GameManager.Instance.RaiseOnEnemySpawnEvent(go);
-
             //Have atronach looking in same direction as caster
             creature.transform.rotation = Caster.transform.rotation;
 
@@ -323,13 +321,14 @@ namespace ThePenwickPapers
         {
             MobileUnit mobileUnit = atronach.GetComponentInChildren<MobileUnit>();
 
+            MobileEnemy mobileEnemy = mobileUnit.Enemy;
+
             //other atronachs in the game have random health with a large range
             //we want ours tied to spell magnitude
-            int luckBonus = Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck) / 8;
-            MobileEnemy mobileEnemy = mobileUnit.Enemy;
-            int range = mobileEnemy.MaxHealth - mobileEnemy.MinHealth;
-            int magnitude = Mathf.Clamp(GetMagnitude(caster), 1, range);
-            mobileEnemy.MinHealth += magnitude - 2;
+            int magnitude = Mathf.Clamp(GetMagnitude(caster), 1, 100);
+
+            int luckBonus = Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck) / 12;
+            mobileEnemy.MinHealth = 23 + magnitude;
             mobileEnemy.MaxHealth = mobileEnemy.MinHealth + luckBonus;
 
             if (Caster.EntityType != EntityTypes.Player && ChanceSuccess)

@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using DaggerfallConnect;
 using DaggerfallConnect.Arena2;
@@ -78,6 +79,7 @@ namespace ThePenwickPapers
                 {
                     Vector3 destination = GetDecoyFinalDestination();
                     Summon(location, destination);
+                    timeOfLastAgitate = Time.time - UnityEngine.Random.Range(-0.4f, 0.4f);
                     success = true;
                 }
             }
@@ -133,6 +135,9 @@ namespace ThePenwickPapers
                 AgitateNearbyFoes();
                 CheckCasterProximity();
                 CheckForMissiles();
+
+                //try to prevent the decoy from actually hitting anything
+                decoy.Entity.ChangeChanceToHitModifier(-200);
             }
         }
 
@@ -235,21 +240,24 @@ namespace ThePenwickPapers
 
             int personality = Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Personality);
 
-            float agitateRange = personality / 7.0f + 5.0f;
+            if (Dice100.FailedRoll(personality / 2))
+                return;
 
-            if (Dice100.SuccessRoll(10 + personality / 2))
-            {
-                //periodically play attracting noise
-                PlayAttractSound();
-            }
+            float agitateRange = personality / 7.0f + 2.0f;
 
-            DaggerfallEntityBehaviour[] entityBehaviours = UnityEngine.Object.FindObjectsOfType<DaggerfallEntityBehaviour>();
+            PlayAttractSound();
+
+            Vector3 location = decoy.transform.position;
+
+            List<DaggerfallEntityBehaviour> entityBehaviours = Utility.GetNearbyEntities(location, agitateRange);
 
             foreach (DaggerfallEntityBehaviour behaviour in entityBehaviours)
             {
-                if (Vector3.Distance(decoy.transform.position, behaviour.transform.position) > agitateRange)
+                EnemyMotor motor = behaviour.GetComponent<EnemyMotor>();
+
+                if (motor == null)
                     continue;
-                else if (behaviour == decoy || behaviour == Caster || behaviour == GameManager.Instance.PlayerEntityBehaviour)
+                else if (behaviour == decoy || behaviour == Caster)
                     continue;
                 else if (Caster.EntityType == EntityTypes.Player && behaviour.Entity.Team == MobileTeams.PlayerAlly)
                     continue;
@@ -257,25 +265,28 @@ namespace ThePenwickPapers
                     continue;
                 else if (behaviour.Entity.Team == MobileTeams.Undead)
                     continue;
-                else if (behaviour.GetComponent<EnemyMotor>().IsHostile == false)
+                else if (motor.IsHostile == false)
                     continue;
-
-                if (Dice100.SuccessRoll(personality))
+                else
                 {
-                    EnemyMotor motor = behaviour.GetComponent<EnemyMotor>();
-                    EnemySenses senses = behaviour.GetComponent<EnemySenses>();
-                    if (motor && senses && senses.Target != decoy)
+                    if (Dice100.SuccessRoll(personality))
                     {
-                        motor.MakeEnemyHostileToAttacker(decoy);
+                        //potentially pull enemy away from current local target
+                        EnemySenses senses = behaviour.GetComponent<EnemySenses>();
+                        if (senses.Target == Caster)
+                            senses.Target = null;
                     }
+                    motor.MakeEnemyHostileToAttacker(decoy);
                 }
-
             }
         }
 
 
         private void PlayAttractSound()
         {
+            if (!decoy.isActiveAndEnabled)
+                return;
+
             DaggerfallAudioSource dfAudio = decoy.GetComponent<DaggerfallAudioSource>();
             dfAudio.AudioSource.spatialize = true;
             dfAudio.AudioSource.spatialBlend = 1.0f;
@@ -652,10 +663,15 @@ namespace ThePenwickPapers
             entity.Stats.SetPermanentStatValue(DFCareer.Stats.Agility, 100);
 
             short dodging = (short)(magnitude * 4);
+            if (entity.EntityType == EntityTypes.EnemyMonster)
+            {
+                //by default, monster types are easier to hit than class types
+                dodging += 160;
+            }
             entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Dodging, dodging);
             entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Stealth, 0); //it's a DECOY
-            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.HandToHand, 0);
-            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Streetwise, 150); //to avoid dirty tricks
+            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.HandToHand, 1);
+            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Streetwise, 200); //to avoid dirty tricks
             entity.CurrentMagicka = 0;
             entity.MaxMagicka = 0;
             entity.CurrentHealth = 1;
@@ -735,7 +751,11 @@ namespace ThePenwickPapers
         private void Decoy_OnAssignBundle(LiveEffectBundle bundleAdded)
         {
             //decoy shouldn't have any live spell effects attached to it
-            manager.ClearSpellBundles();
+            if (decoy)
+            {
+                EntityEffectManager effectManager = decoy.GetComponent<EntityEffectManager>();
+                effectManager.ClearSpellBundles();
+            }
         }
 
 
@@ -746,7 +766,7 @@ namespace ThePenwickPapers
         private IEnumerator RunDecoy()
         {
             EnemyMotor motor = decoy.GetComponent<EnemyMotor>();
-            motor.MakeEnemyHostileToAttacker(target); //George insults the decoy
+            motor.MakeEnemyHostileToAttacker(target);
 
             float blinkDelay = 0.1f;
             bool blink = true;
