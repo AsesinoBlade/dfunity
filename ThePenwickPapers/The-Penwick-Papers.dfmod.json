@@ -59,6 +59,14 @@
         "Assets/Game/Mods/ThePenwickPapers/Sound/WarpIn.ogg",
         "Assets/Game/Mods/ThePenwickPapers/Sound/Creak1.ogg",
         "Assets/Game/Mods/ThePenwickPapers/Sound/Creak2.ogg",
-        "Assets/Game/Mods/ThePenwickPapers/Sound/WindNoise.ogg"
-    ]
+        "Assets/Game/Mods/ThePenwickPapers/Sound/WindNoise.ogg",
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/WindWalk.cs",
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/Utility.cs",
+        "Assets/Game/Mods/ThePenwickPapers/Textures/PeepHole.png",
+        "Assets/Game/Mods/ThePenwickPapers/Textures/PeepSlit.png",
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/SkillAdvancement.cs",
+        "Assets/Game/Mods/ThePenwickPapers/Scripts/Loot.cs"
+    ],
+    "ModPreCompile": true
+
 }
