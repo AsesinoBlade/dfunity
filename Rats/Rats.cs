@@ -15,12 +15,10 @@ namespace Vermin
 
     public static class Rats
     {
-        private static List<DaggerfallEntityBehaviour> deadRats;
+        public static string RatObjectName = "Rat Vermin";
 
         static Rats()
         {
-            deadRats = new List<DaggerfallEntityBehaviour>();
-
             EnemyDeath.OnEnemyDeath += EnemyDeath_OnDeathHandler; //corpse handling
         }
 
@@ -31,7 +29,7 @@ namespace Vermin
         /// <param name="size">From 1 to 3, 1 being mouse-size, 3 being cat-size.</param>
         /// <param name="location">Initial location of our sqeaking friend.</param>
         /// <param name="pointsOfInterest">Locations the rat may occasionally visit (food on floor etc).</param>
-        public static DaggerfallEntityBehaviour AddRat(int size, Vector3 location, List<Vector3> pointsOfInterest)
+        public static DaggerfallEntityBehaviour AddRat(int size, Vector3 location, List<Vector3> pointsOfInterest = null)
         {
             size = Mathf.Clamp(size, 1, 3);
 
@@ -39,8 +37,6 @@ namespace Vermin
 
             RatLogic ratLogic = rat.gameObject.AddComponent<RatLogic>();
             ratLogic.SetPointsOfInterest(pointsOfInterest);
-
-            rat.Entity.OnDeath += Entity_OnDeathHandler;
 
             return rat;
         }
@@ -53,7 +49,7 @@ namespace Vermin
         {
             MobileTypes mobileType = MobileTypes.Rat;
 
-            string displayName = "Rat";
+            string displayName = RatObjectName;
             Transform parent = GameObjectHelper.GetBestParent();
 
             GameObject go = GameObjectHelper.InstantiatePrefab(DaggerfallUnity.Instance.Option_EnemyPrefab.gameObject, displayName, parent, location);
@@ -98,41 +94,28 @@ namespace Vermin
 
 
         /// <summary>
-        /// Called immediately when rat dies. Records the dead rat for further processing.
-        /// Trying to handle everything in the same update frame.
-        /// </summary>
-        private static void Entity_OnDeathHandler(DaggerfallEntity entity)
-        {
-            //At this point, EnemyDeath.CompleteDeath() hasn't been called yet.
-            //We'll record the dead rat and wait for EnemyDeath to set a static event indicating finish.
-            deadRats.Add(entity.EntityBehaviour);
-        }
-
-
-        /// <summary>
         /// Called when a creature dies, after its corpse is created. Makes adjustments to smaller rat corpses.
         /// </summary>
         private static void EnemyDeath_OnDeathHandler(object sender, System.EventArgs args)
         {
-            if (deadRats.Count == 0)
+            if (sender == null)
                 return;
 
-            deadRats.RemoveAll(r => r == null); //just in case
+            EnemyDeath enemyDeath = (EnemyDeath)sender;
 
-            foreach (DaggerfallEntityBehaviour deadRat in deadRats)
+            if (enemyDeath.name.Equals(RatObjectName))
             {
-                DaggerfallLoot corpse = deadRat.CorpseLootContainer;
+                DaggerfallLoot corpse = enemyDeath.GetComponent<DaggerfallEntityBehaviour>().CorpseLootContainer;
                 if (corpse != null)
                 {
-                    corpse.transform.localScale = deadRat.transform.localScale;
+                    corpse.transform.localScale = enemyDeath.transform.localScale;
                     corpse.LoadID = 0; //prevent huge rat corpse from appearing on save/reload
-                    Vector3 position = deadRat.GetComponent<EnemyMotor>().FindGroundPosition();
-                    float radius = deadRat.GetComponent<CharacterController>().radius * corpse.transform.localScale.x;
+                    Vector3 position = enemyDeath.GetComponent<EnemyMotor>().FindGroundPosition();
+                    float radius = enemyDeath.GetComponent<CharacterController>().radius * corpse.transform.localScale.x;
                     corpse.transform.position = position + Vector3.up * radius;
                 }
             }
 
-            deadRats.RemoveAll(r => r.CorpseLootContainer != null);
         }
 
     } //class Rats
@@ -156,7 +139,7 @@ namespace Vermin
         /// </summary>
         public void SetPointsOfInterest(List<Vector3> pointsOfInterest)
         {
-            this.pointsOfInterest = pointsOfInterest;
+            this.pointsOfInterest = pointsOfInterest ?? new List<Vector3>();
         }
 
 
