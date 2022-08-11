@@ -20,8 +20,19 @@ namespace ThePenwickPapers
         NowIsNotTheTime,
         YouAreParalyzed,
         NotWhileSubmerged,
+        MinionEquipsItem,
+        MinionTakesItem,
+        MinionGoesRenegade,
+
+        //Encumbrance details
+        WeaponWeight,
+        ArmorWeight,
+        IngredientWeight,
+        OtherWeight,
+        GoldWeight,
 
         //Landmark Journal, LandmarkJournalItem
+        LandmarkJournal,
         NotInDungeonOrTown,
         EnemiesNear,
         NotGrounded,
@@ -54,6 +65,11 @@ namespace ThePenwickPapers
         LostGoldButSnatchedItem,
         NabbedItem,
         SimultaneousPickpocket,
+        LostInCityDay,
+        LostInCityNight,
+        LostInSmallTownDay,
+        LostInSmallTownNight,
+        LostInDark,
 
         //Create Atronach
         CreateAtronachGroupName,
@@ -80,6 +96,11 @@ namespace ThePenwickPapers
         MissingHolyDagger,
         MissingSoulTrap,
         NoViableVesselNearby,
+
+        //Scour
+        ScourGroupName,
+        ScourEffectDescription,
+        ScourDuration,
 
         //Illusory Decoy
         IllusoryDecoyGroupName,
@@ -136,11 +157,14 @@ namespace ThePenwickPapers
 
         //Dirty Tricks
         NotEnoughLockpickingSkill,
+        OutOfPebbles,
         DoorChocked,
         DoorUnchocked,
+        NotYet,
 
 
         //Herbalism
+        MortarAndPestle,
         MustHaveMortarPestle,
         HerbalismUnknown,
         HerbalismInterrupted,
@@ -213,41 +237,40 @@ namespace ThePenwickPapers
         Noble,
         SearchingForSomething,
         NoddingRespectfully,
-        SoulTrap,
 
         //EnhancedInfo Descriptive words
         Absorbing, Adroit, Agile, Alluring, Aloof, Amorous, Amusing, Annoyed, Anxious,
         Appalled, Aspiring,
         Baleful, Battered, Beefcake, Beguiling, Bitter, Bleak, Bloody, Bookish, Bored, Bowing, Brash,
-        Brave, Brisk, Brooding, Bruised, Brusque, Buff, Bumbling, Burning, Busy,
+        Brave, Brisk, Brooding, Buff, Bumbling, Burning, Busy,
         Cagey, Calloused, Canny, Captivating, Cerebral, Chaffing, Charming, Chilly, Clammy, Clandestine,
-        Coarse, Cocky, Cold, Comely, Comical, Concerned, Confused, Contemplative, Coy, Covert, Crafty,
+        Coarse, Cocky, Comely, Comical, Concerned, Confused, Contemplative, Cool, Coy, Covert, Crafty,
         Crestfallen, Cryptic, Curious, Curt, Curtseying, Cynical,
-        Damp, Dark, Despondent, Detached, Devoted, Devout, Dinged, Disgusted, Disheveled, Distracted, Doubtful,
+        Damaged, Damp, Dark, Despondent, Devoted, Devout, Disgusted, Disheveled, Distracted, Doubtful,
         Drained, Drenched, Dripping, Dubious, Dutiful,
         Eager, Enigmatic, Enlightened, Enthralling, Entrancing, Evasive, Exasperated, Exemplary, Exhausted,
         Experienced,
         Faithful, Fascinated, Fascinating, Fervent, Fervid, Fetching, Fetid, Flexing, Flirty, Flourishing,
         Flustered, Focused, Fond, Forsaken, Fortified, Frail, Freezing, Fretting, Friendly, Frugal, Frumpy,
         Furtive,
-        Genteel, Giddy, Glum, Graceful, Grim, Guarded,
+        Genteel, Giddy, Glum, Graceful, Grazed, Grim, Guarded,
         Hardened, Harried, Heady, Healing, Healthy, Hopeful, Hostile, Hungry, Hunky, Hurried, Hypnotic,
-        Impenetrable, Impure, Inscrutable, Inspiring, Invigorated,
+        Icy, Impenetrable, Impure, Indifferent, Inscrutable, Inspiring, Invigorated,
         Jovial, Joyless,
         Klutzy,
         Leery, Limber, Lithe, Lively, Lorn, Lurid, Lusty,
-        Mangled, Mauled, Miffed, Miserly, Morbid, Moody, Mortified, Mucky, Muddled, Muddy, Mutilated, Mysterious,
+        Mangled, Miffed, Miserly, Morbid, Moody, Mortified, Mucky, Muddled, Muddy, Mysterious,
         Naughty, Nauseated, Nervous, Neutral, Nimble, Numb,
         Obedient, Obscure, Organized,
         Paralyzed, Paranoid, Perplexed, Perplexing, Perspiring, Pious, Playful, Poignant, Poisoned, Polished,
         Pristine, Provacative, Prudent,
         Questionable, Quivering,
-        Refined, Reflecting, Repulsed, Resigned, Resisting, Restless, Reverent, Revolted, Riveting, Rousing, Ruined,
-        Saluting, Savvy, Scandalous, Scarred, Sceptical, Scowling, Seductive, Shifty, Shivering, Shrewd,
-        Shy, Shady, Shielded, Shocked, Silenced, Sinuous, Skittish, Slick, Sly, Soaked, Solemn, Sopping, Spry,
+        Refined, Reflecting, Repulsed, Resigned, Resisting, Restless, Reverent, Revolted, Riveting, Rousing,
+        Saluting, Savaged, Savvy, Scandalous, Scarred, Sceptical, Scowling, Seductive, Shifty, Shivering, Shrewd,
+        Shy, Shady, Shielded, Shocked, Silenced, Sinuous, Skittish, Slick, Sly, Soaked, Solemn, Sopping, SoulTrapped, Spry,
         Stained, Stark, Stern, Steadfast, Stoic, Stout, Strapping, Stubborn, Studied, Suffering,
         Sullied, Superior, Supple, Suspicious, Sweaty,
-        Tainted, Teasing, Tense, Tepid, Tired, Trembling, Tricky, Troubled,
+        Tainted, Tarnished, Teasing, Tense, Tepid, Tired, Trembling, Tricky, Troubled,
         Unaware, Urbane,
         Vampish, Vexed, Violent, Virile, Virtuous,
         Warm, Wary, Weakening, Weary, Winking, Wise, Withdrawn, Wounded, Wry,
@@ -291,7 +314,10 @@ namespace ThePenwickPapers
             return areAllKeysValid;
         }
 
+
     } //class TextExtension
+
+
 
 } //namespace
 

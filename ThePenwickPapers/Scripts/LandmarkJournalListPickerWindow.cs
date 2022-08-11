@@ -1,5 +1,5 @@
-// Project:   Landmark Journal for Daggerfall Unity
-// Author:    DunnyOfPenwick
+// Project:     Landmark Journal, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
 // Origin Date: Apr 2021
 
 using System.Collections.Generic;
@@ -11,7 +11,6 @@ using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Utility;
 using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.UserInterface;
-using DaggerfallWorkshop.Game.UserInterfaceWindows;
 using DaggerfallWorkshop.Game.Formulas;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.Items;
@@ -19,10 +18,10 @@ using DaggerfallConnect;
 
 namespace ThePenwickPapers
 {
-    public class LandmarkJournalListPickerWindow : DaggerfallListPickerWindow
+    public class LandmarkJournalListPickerWindow : ListPickerWindow
     {
-        private readonly List<LandmarkLocation> locations;
-        private PlayerEntity player;
+        readonly List<LandmarkLocation> locations;
+        readonly PlayerEntity player;
 
 
 
@@ -47,14 +46,13 @@ namespace ThePenwickPapers
             }
 
             listBox.SelectNone();
-
         }
 
 
         /// <summary>
-        /// Triggered when an item is chosed from the landmark location list window.
+        /// Triggered when an item is chosen from the landmark location list window.
         /// </summary>
-        public void LocationPicker_OnItemPicked(int index, string name)
+        void LocationPicker_OnItemPicked(int index, string name)
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
 
@@ -128,40 +126,47 @@ namespace ThePenwickPapers
         /// <summary>
         /// Handles fatigue loss, time loss, and checks for any incident that occurs during travel.
         /// </summary>
-        private bool HandleTravelCost(float distance, bool isRiding)
+        bool HandleTravelCost(float distance, bool isRiding)
         {
             bool isInside = GameManager.Instance.PlayerEnterExit.IsPlayerInside;
 
-            if (!isInside)
+            if (isInside)
             {
-                int streetwise = player.Skills.GetLiveSkillValue(DFCareer.Skills.Streetwise);
-
-                //lower streetwise results in longer trip
-                float streetwiseMod = (100 - streetwise) / 100;
-                distance += distance * streetwiseMod;
+                distance *= 4; //dungeons tend to be tangled
             }
             else
             {
-                distance *= 4; //dungeons tend to be tangled
+                int streetwise = player.Skills.GetLiveSkillValue(DFCareer.Skills.Streetwise);
+                //lower streetwise results in longer trip
+                //at skill:20 distance is 41% longer, at skill:100 37% shorter, at skill:40 no change 
+                float streetwiseMod = 1f - (1f / Mathf.Sqrt((float)streetwise / 40f));
+                distance -= distance * streetwiseMod;
+                float darknessModifier = DaggerfallUnity.Instance.WorldTime.DaggerfallDateTime.IsNight ? 1.3f : 1f;
+                distance *= darknessModifier;
             }
 
             float encumbranceModifier = 1;
 
-            if (!isRiding)
+            if (isRiding == false)
                 encumbranceModifier += player.CarriedWeight / player.MaxEncumbrance;
 
-            //Calculate fatigue loss
-            double fatigueLoss = distance * encumbranceModifier / 100;
-            if (!isRiding && player.Career.Athleticism)
-                fatigueLoss *= player.ImprovedAthleticism ? 0.6 : 0.8;
-
-            player.DecreaseFatigue((int)fatigueLoss, true);
-
-
             //Calculate time loss
-            float speedModifier = isRiding ? 3 : 400 / (player.Stats.LiveSpeed + 30);
+            float speedModifier = isRiding ? 1f : 0.6f + 60f / player.Stats.LiveSpeed;
             float travelTime = distance * speedModifier * encumbranceModifier;
             DaggerfallUnity.Instance.WorldTime.RaiseTimeInSeconds += travelTime;
+
+
+            //Calculate fatigue loss
+            float fatigueLoss = travelTime / 6.0f;
+            if (isRiding == false)
+            {
+                fatigueLoss *= encumbranceModifier * 2f;
+                if (player.Career.Athleticism)
+                    fatigueLoss *= player.ImprovedAthleticism ? 0.6f : 0.8f; //making up my own values
+            }
+
+            player.DecreaseFatigue((int)fatigueLoss); //no assignMultiplier argument
+
 
             //check for any unfortunate incident during travel
             return isInside ? CheckForDungeonIncident(distance) : CheckForTownIncident(distance);
@@ -171,13 +176,13 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if PC was exposed to any disease-causing spores while traveling in a dungeon.
         /// </summary>
-        private bool CheckForDungeonIncident(float distance)
+        bool CheckForDungeonIncident(float distance)
         {
             bool hadIncident = false;
 
             float sporeChance = (130 - Mathf.Clamp(player.Stats.LiveLuck, 0, 100)) / 50;
             sporeChance *= distance / 100;
-            sporeChance = Mathf.Clamp(sporeChance, 0.1f, 10f);
+            sporeChance = Mathf.Clamp(sporeChance, 0.3f, 10f);
 
             if (player.Level < 5)
             {
@@ -192,7 +197,7 @@ namespace ThePenwickPapers
                 };
 
                 FormulaHelper.InflictDisease(player, player, diseases);
-                DaggerfallUI.MessageBox(Text.InhaledSpores.Get());
+                Utility.MessageBox(Text.InhaledSpores.Get());
 
             }
 
@@ -203,20 +208,54 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks for thugs, pickpockets, and any plague-carriers while PC is traveling in town.
         /// </summary>
-        private bool CheckForTownIncident(float distance)
+        bool CheckForTownIncident(float distance)
         {
             bool hadIncident;
 
             int regionIndex = GameManager.Instance.PlayerGPS.CurrentRegionIndex;
             bool[] regionFlags = player.RegionData[regionIndex].Flags;
 
-            if (DaggerfallUnity.Instance.WorldTime.DaggerfallDateTime.IsNight)
-            {
+            bool isNight = DaggerfallUnity.Instance.WorldTime.DaggerfallDateTime.IsNight;
+
+            if (isNight)
                 hadIncident = CheckForThugs(distance, regionFlags);
-            }
             else
-            {
                 hadIncident = CheckForPlague(distance, regionFlags) || CheckForCutpurse(distance, regionFlags);
+
+            //Check to show appropriate 'Getting Lost' message if PC has low streetwise skill.
+            int streetwise = player.Skills.GetLiveSkillValue(DFCareer.Skills.Streetwise);
+            if (!hadIncident && Dice100.SuccessRoll(70 - streetwise * 7))
+            {
+                switch (GameManager.Instance.PlayerGPS.CurrentLocationType)
+                {
+                    case DFRegion.LocationTypes.TownCity:
+                    case DFRegion.LocationTypes.TownHamlet:
+                        if (isNight)
+                            Utility.MessageBox(Text.LostInCityNight.Get());
+                        else
+                            Utility.MessageBox(Text.LostInCityDay.Get());
+                        hadIncident = true;
+                        break;
+                    case DFRegion.LocationTypes.HomeFarms:
+                    case DFRegion.LocationTypes.HomeWealthy:
+                    case DFRegion.LocationTypes.Tavern:
+                    case DFRegion.LocationTypes.TownVillage:
+                    case DFRegion.LocationTypes.ReligionTemple:
+                        if (isNight)
+                            Utility.MessageBox(Text.LostInSmallTownNight.Get());
+                        else
+                            Utility.MessageBox(Text.LostInSmallTownDay.Get());
+                        hadIncident = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            if (!hadIncident && isNight && Dice100.SuccessRoll(30 - streetwise))
+            {
+                Utility.MessageBox(Text.LostInDark.Get());
+                hadIncident = true;
             }
 
             return hadIncident;
@@ -226,25 +265,26 @@ namespace ThePenwickPapers
         /// <summary>
         /// Check if PC had an encounter with thugs while traveling in town at night.
         /// </summary>
-        private bool CheckForThugs(float distance, bool[] regionFlags)
+        bool CheckForThugs(float distance, bool[] regionFlags)
         {
             bool hadIncident = false;
 
             bool crimeWave = regionFlags[(int)PlayerEntity.RegionDataFlags.CrimeWave];
 
-            float crimeChance = (distance / 100) * (crimeWave ? 18 : 8);
+            float crimeChance = (distance / 100) * (crimeWave ? 12 : 6);
+            crimeChance = Mathf.Clamp(crimeChance, 3, 40);
 
             if (Random.Range(0.0f, 100.0f) < crimeChance)
             {
                 hadIncident = true;
 
-                if (player.Career.AcuteHearing && Dice100.SuccessRoll(50))
+                if (player.Career.AcuteHearing && Dice100.SuccessRoll(player.ImprovedAcuteHearing ? 70 : 40))
                 {
-                    DaggerfallUI.MessageBox(Text.AmbushAverted.Get());
+                    Utility.MessageBox(Text.AmbushAverted.Get());
                 }
                 else
                 {
-                    DaggerfallUI.MessageBox(Text.Thugs.Get());
+                    Utility.MessageBox(Text.Thugs.Get());
                     SpawnThugs(player.Level / 8 + 1);
                 }
             }
@@ -256,7 +296,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Spawns enemies to attack the PC.
         /// </summary>
-        private void SpawnThugs(int count)
+        void SpawnThugs(int count)
         {
             MobileTypes[] thiefTypes = { MobileTypes.Rogue, MobileTypes.Thief, MobileTypes.Burglar };
             MobileTypes[] fighterTypes = { MobileTypes.Archer, MobileTypes.Barbarian, MobileTypes.Warrior };
@@ -276,7 +316,7 @@ namespace ThePenwickPapers
         /// Check if PC had an encounter with a plague victim while traveling in town during the day.
         /// This can only occur if there is a plague occuring in the current region.
         /// </summary>
-        private bool CheckForPlague(float distance, bool[] regionFlags)
+        bool CheckForPlague(float distance, bool[] regionFlags)
         {
             bool hadIncident = false;
 
@@ -284,8 +324,9 @@ namespace ThePenwickPapers
 
             if (plagueOngoing)
             {
-                float plagueChance = (130 - Mathf.Clamp(player.Stats.LiveLuck, 0, 100)) / 10;
-                plagueChance *= distance / 100;
+                float plagueChance = (130f - Mathf.Clamp(player.Stats.LiveLuck, 0, 100)) / 25f;
+                plagueChance *= distance / 100f;
+                plagueChance = Mathf.Clamp(plagueChance, 1, 15);
 
                 if (Random.Range(0.0f, 100.0f) < plagueChance)
                 {
@@ -295,8 +336,7 @@ namespace ThePenwickPapers
 
                     FormulaHelper.InflictDisease(player, player, diseases);
 
-                    DaggerfallUI.MessageBox(Text.PasserbyAvoidsPlagueVictim.Get());
-                    DaggerfallUI.MessageBox(Text.EncounteredPlagueVictim.Get());
+                    Utility.MessageBoxSequence(Text.EncounteredPlagueVictim.Get(), Text.PasserbyAvoidsPlagueVictim.Get());
                 }
 
             }
@@ -309,12 +349,13 @@ namespace ThePenwickPapers
         /// Check if PC had an encounter with a pickpocket while traveling in town during the day.
         /// There will be a higher incidence if there is a crime wave currently occuring in the region.
         /// </summary>
-        private bool CheckForCutpurse(float distance, bool[] regionFlags)
+        bool CheckForCutpurse(float distance, bool[] regionFlags)
         {
             bool hadIncident = false;
 
             bool crimeWave = regionFlags[(int)PlayerEntity.RegionDataFlags.CrimeWave];
-            float crimeChance = (distance / 100) * (crimeWave ? 18 : 8);
+            float crimeChance = (distance / 100) * (crimeWave ? 12 : 6);
+            crimeChance = Mathf.Clamp(crimeChance, 3, 35);
 
             if (Random.Range(0.0f, 100.0f) < crimeChance)
             {
@@ -332,36 +373,28 @@ namespace ThePenwickPapers
                     {
                         player.TallySkill(DFCareer.Skills.Pickpocket, 2);
 
-                        string itemName;
-                        DaggerfallUnityItem item = SnatchItem(out itemName);
+                        DaggerfallUnityItem item = SnatchItem(out string itemName);
 
                         if (item != null)
-                        {
                             player.Items.AddItem(item);
-                        }
 
+                        string msg;
                         if (HandleLostGold() > 0)
-                        {
-                            string msg = Text.LostGoldButSnatchedItem.Get(itemName); 
-                            DaggerfallUI.MessageBox(msg);
-                        }
+                            msg = Text.LostGoldButSnatchedItem.Get(itemName); 
                         else
-                        {
-                            string msg = Text.NabbedItem.Get(itemName); 
-                            DaggerfallUI.MessageBox(msg);
-                        }
+                            msg = Text.NabbedItem.Get(itemName); 
 
-                        //this message will be layered on top of the one above
-                        DaggerfallUI.MessageBox(Text.SimultaneousPickpocket.Get()); 
+                        //sequence of message boxes
+                        Utility.MessageBoxSequence(Text.SimultaneousPickpocket.Get(), msg);
                     }
                     else
                     {
-                        DaggerfallUI.MessageBox(Text.CutpurseFails.Get());
+                        Utility.MessageBox(Text.CutpurseFails.Get());
                     }
                 }
                 else if (HandleLostGold() > 0)
                 {
-                    DaggerfallUI.MessageBox(Text.CutpurseSucceeds.Get());
+                    Utility.MessageBox(Text.CutpurseSucceeds.Get());
                 }
             }
 
@@ -370,17 +403,14 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Handles loss of gold to a pickpocket.
+        /// Handles loss of gold to a pickpocket.  Returns amount lost.
         /// </summary>
-        private int HandleLostGold()
+        int HandleLostGold()
         {
-            int goldLost = player.GoldPieces / (Random.Range(5, 20));
+            int goldLost = Random.Range(60, 150);
 
-            if (goldLost > 150)
-            {
-                //put a cap on how much a cutpurse can actually steal
-                goldLost = Random.Range(110, 150);
-            }
+            if (goldLost > player.GoldPieces)
+                goldLost = player.GoldPieces;
 
             player.DeductGoldAmount(goldLost);
 
@@ -391,7 +421,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// During simultaneous pickpocket events, this determines what item the PC nabs.
         /// </summary>
-        private DaggerfallUnityItem SnatchItem(out string itemName)
+        DaggerfallUnityItem SnatchItem(out string itemName)
         {
             DaggerfallUnityItem item = null;
 
@@ -432,7 +462,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Determines what the appropriate footstep noise is based on the current terrain and season.
         /// </summary>
-        private SoundClips GetFootstepSound()
+        SoundClips GetFootstepSound()
         {
             if (GameManager.Instance.PlayerEnterExit.IsPlayerInsideDungeon)
                 return SoundClips.PlayerFootstepStone1;

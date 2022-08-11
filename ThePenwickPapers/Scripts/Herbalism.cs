@@ -2,6 +2,10 @@
 // Author:      DunnyOfPenwick
 // Origin Date: Feb 2022
 
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
 using DaggerfallConnect;
 using DaggerfallConnect.FallExe;
 using DaggerfallWorkshop;
@@ -12,17 +16,12 @@ using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.MagicAndEffects.MagicEffects;
 using DaggerfallWorkshop.Game.Serialization;
 using DaggerfallWorkshop.Game.UserInterface;
-using DaggerfallWorkshop.Game.UserInterfaceWindows;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using UnityEngine;
 
 
 namespace ThePenwickPapers
 {
 
-    public class Herbalism
+    public static class Herbalism
     {
         public class Remedy
         {
@@ -30,15 +29,17 @@ namespace ThePenwickPapers
             public int RequiredSkill;
             public DFCareer.Stats Stat;
             public Text TreatmentDescription;
+            public string ShortIngredientList;
             public SoundClips[] Sounds;
             public int[] Ingredients;
 
-            public Remedy(Text remedyName, int requiredSkill, DFCareer.Stats stat, Text description, SoundClips[] sounds, int[] ingredients)
+            public Remedy(Text remedyName, int requiredSkill, DFCareer.Stats stat, Text description, string shortIngr, SoundClips[] sounds, int[] ingredients)
             {
                 Name = remedyName;
                 RequiredSkill = requiredSkill;
                 Stat = stat;
                 TreatmentDescription = description;
+                ShortIngredientList = shortIngr;
                 Sounds = sounds;
                 Ingredients = ingredients;
             }
@@ -47,110 +48,135 @@ namespace ThePenwickPapers
         public static readonly List<Remedy> Remedies = new List<Remedy>()
         {
             new Remedy(Text.RecoverFatigue, 16, DFCareer.Stats.None, Text.TreatLethargyViaExhilarantTonic,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients2.Bamboo, (int)MiscellaneousIngredients1.Rain_water}),
 
             new Remedy(Text.RecoverFatigue, 30, DFCareer.Stats.None, Text.TreatLethargyViaErgogenicInfusion,
+                " (GinkLeaves,PurWater)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients2.Ginkgo_leaves, (int)MiscellaneousIngredients1.Pure_water}),
 
             new Remedy(Text.RegenerateHealth, 17, DFCareer.Stats.None, Text.TreatSalubriousAccelerantViaBotanicalTincture,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.AmbientWaterBubbles},
                 new int[] { (int)PlantIngredients1.Root_bulb, (int)MiscellaneousIngredients1.Elixir_vitae}),
 
             new Remedy(Text.RegenerateHealth, 33, DFCareer.Stats.None, Text.TreatSalubriousAccelerantViaRemedialPoultice,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles, SoundClips.EquipLeather},
                 new int[] {(int)CreatureIngredients1.Troll_blood, (int)PlantIngredients2.Aloe}),
 
             new Remedy(Text.RecoverMagicka, 18, DFCareer.Stats.None, Text.TreatFluxePaucityViaMetallurgicCordial,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)MetalIngredients.Silver, (int)MiscellaneousIngredients1.Nectar}),
 
             new Remedy(Text.RecoverMagicka, 35, DFCareer.Stats.None, Text.TreatFluxePaucityViaDraconicIncense,
+                " (DrgnScale,Amber)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.Burning},
                 new int[] {(int)CreatureIngredients2.Dragons_scales, (int)Gems.Amber}),
 
             new Remedy(Text.ExpungePoison, 19, DFCareer.Stats.None, Text.TreatToxaemiaViaRenalExpungement,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)MetalIngredients.Copper, (int)MiscellaneousIngredients1.Rain_water}),
 
             new Remedy(Text.CleansePoison, 29, DFCareer.Stats.None, Text.TreatToxaemiaViaDiaphoreticDepurative,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)PlantIngredients1.Clover, (int)MiscellaneousIngredients1.Elixir_vitae}),
 
             new Remedy(Text.RecoverStrength, 24, DFCareer.Stats.Strength, Text.TreatAtrophiaViaAnapleroticTincture,
+                " (OrcBld,ElxrVit)",
                 new SoundClips[] {SoundClips.AmbientWaterBubbles, SoundClips.MakePotion},
                 new int[] {(int)CreatureIngredients1.Orcs_blood, (int)MiscellaneousIngredients1.Elixir_vitae}),
 
             new Remedy(Text.RecoverStrength, 36, DFCareer.Stats.Strength, Text.TreatAtrophiaViaAnapleroticUnction,
+                "(WereBrTusk,Ichor)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles, SoundClips.EquipLeather},
                 new int[] {(int)CreatureIngredients3.Wereboar_tusk, (int)MiscellaneousIngredients1.Ichor}),
 
             new Remedy(Text.RecoverIntelligence, 22, DFCareer.Stats.Intelligence, Text.TreatPhrenitisViaAntiphlogisticTonic,
+                " (WhtRose,RainWtr)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients2.White_rose, (int)MiscellaneousIngredients1.Rain_water}),
 
             new Remedy(Text.RecoverIntelligence, 37, DFCareer.Stats.Intelligence, Text.TreatCephalicPhlegmasiaViaAntiphlogisticInfusion,
+                " (LchDst,PureWtr)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)CreatureIngredients1.Lich_dust, (int)MiscellaneousIngredients1.Pure_water}),
 
             new Remedy(Text.RecoverWillpower, 21, DFCareer.Stats.Willpower, Text.TreatDeliriumViaBotanicalCordial,
+                " (GrnBerries,Nectar)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] { (int)PlantIngredients1.Green_berries, (int)MiscellaneousIngredients1.Nectar}),
 
             new Remedy(Text.RecoverWillpower, 36, DFCareer.Stats.Willpower, Text.TreatAmentiaViaBotanicalEnema,
+                " (GrnBerries,PureWtr)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients1.Green_berries, (int)MiscellaneousIngredients1.Pure_water}),
 
             new Remedy(Text.RecoverAgility, 23, DFCareer.Stats.Agility, Text.TreatAtaxiaViaAntispasmodicSalve,
+                " (GrnLeaves,Aloe)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles, SoundClips.EquipLeather},
                 new int[] {(int)PlantIngredients1.Green_leaves, (int)PlantIngredients2.Aloe}),
 
             new Remedy(Text.RecoverAgility, 38, DFCareer.Stats.Agility,Text.TreatAtaxiaViaAntispasmodicEnema,
+                "(GrnLeavs,PureWtr)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients1.Green_leaves, (int)MiscellaneousIngredients1.Pure_water}),
 
             new Remedy(Text.RecoverEndurance, 25, DFCareer.Stats.Endurance, Text.TreatAnaemiaViaHepaticDepurative,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients2.Bamboo, (int)MiscellaneousIngredients1.Ichor}),
 
             new Remedy(Text.RecoverEndurance, 39, DFCareer.Stats.Endurance, Text.TreatHepaticPhlegmasiaViaFloralIncense,
+                " (YlwRose,Amber)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.Burning},
                 new int[] {(int)PlantIngredients1.Yellow_rose, (int)Gems.Amber}),
 
             new Remedy(Text.RecoverPersonality, 28, DFCareer.Stats.Personality, Text.TreatDistemperViaSoothingCordial,
+                " (GldPoppy,Nectar)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)PlantIngredients1.Golden_poppy, (int)MiscellaneousIngredients1.Nectar}),
 
             new Remedy(Text.RecoverPersonality, 40, DFCareer.Stats.Personality, Text.TreatEffluviaViaRectifyingDecoction,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.SplashSmall, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients2.Palm, (int)MiscellaneousIngredients1.Rain_water}),
 
             new Remedy(Text.RecoverSpeed, 27, DFCareer.Stats.Speed, Text.TreatKinesiaViaCalomel,
+                "(YlwBerries,Mercury)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles, SoundClips.MakePotion},
                 new int[] {(int)PlantIngredients1.Yellow_berries, (int)MetalIngredients.Mercury}),
 
             new Remedy(Text.ResistParalysis, 20, DFCareer.Stats.None, Text.TreatCatylepsyViaAntiparalyticOintment,
+                " (BslkEye,Ichor)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles, SoundClips.EquipLeather},
                 new int[] {(int)CreatureIngredients1.Basilisk_eye, (int)MiscellaneousIngredients1.Ichor}),
 
             new Remedy(Text.Moonseed, 26, DFCareer.Stats.None, Text.Envenomed,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)PlantIngredients1.Red_berries, (int)MiscellaneousIngredients1.Ichor}),
 
             new Remedy(Text.Magebane, 31, DFCareer.Stats.None, Text.Envenomed,
+                " (BlkPoppy,WrthEss)",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)PlantIngredients2.Black_poppy, (int)CreatureIngredients1.Wraith_essence}),
 
             new Remedy(Text.PyrrhicAcid, 44, DFCareer.Stats.None, Text.Envenomed,
+                "",
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
                 new int[] {(int)PlantIngredients2.Black_rose, (int)PlantIngredients2.Cactus}),
 
         };
 
-        private static DaggerfallEntityBehaviour patient;
-        private static DaggerfallListPickerWindow remedyPicker;
-        private static bool creatingRemedy;
+        static DaggerfallEntityBehaviour patient;
+        static ListPickerWindow remedyPicker;
+        static bool creatingRemedy;
 
 
 
@@ -209,14 +235,7 @@ namespace ThePenwickPapers
                 return true;
             }
 
-            bool mortarEquipped = false;
-            foreach (DaggerfallUnityItem item in GameManager.Instance.PlayerEntity.ItemEquipTable.EquipTable)
-            {
-                if (item != null && item.TemplateIndex == MortarAndPestle.MortarAndPestleTemplateIndex)
-                    mortarEquipped = true;
-            }
-
-            if (!mortarEquipped)
+            if (!Utility.IsItemEquipped(MortarAndPestle.MortarAndPestleTemplateIndex))
             {
                 Utility.AddHUDText(Text.MustHaveMortarPestle.Get());
                 return true;
@@ -245,19 +264,16 @@ namespace ThePenwickPapers
         /// <summary>
         /// Show color coded available remedy selections in list window.
         /// </summary>
-        private static void ShowRemedyPicker()
+        static void ShowRemedyPicker()
         {
             IUserInterfaceManager uiManager = DaggerfallUI.UIManager;
 
-            int medical = GameManager.Instance.PlayerEntity.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
+            int medical = GameManager.Instance.PlayerEntity.Skills.GetPermanentSkillValue(DFCareer.Skills.Medical);
 
-            remedyPicker = new DaggerfallListPickerWindow(uiManager, uiManager.TopWindow);
+            remedyPicker = new ListPickerWindow(uiManager, uiManager.TopWindow);
             remedyPicker.OnItemPicked += RemedyPicker_OnItemPicked;
-            remedyPicker.OnCancel += RemedyPicker_OnCancel;
 
             ListBox listBox = remedyPicker.ListBox;
-            ListBox.ListItem item;
-            int count = 0;
             listBox.SelectNone();
 
             foreach (Remedy remedy in Remedies)
@@ -265,24 +281,33 @@ namespace ThePenwickPapers
                 if (remedy.RequiredSkill > medical)
                     continue;
 
-                ++count;
+                //Player can only envenom themselves
+                if (patient != GameManager.Instance.PlayerEntityBehaviour)
+                    if (remedy.Name == Text.Moonseed || remedy.Name == Text.Magebane || remedy.Name == Text.PyrrhicAcid)
+                        continue;
 
-                StringBuilder sb = new StringBuilder();
-                sb.Append(remedy.Name.Get());
-                sb.Append(" (");
-                for (int i = 0; i < remedy.Ingredients.Length; ++i)
+                StringBuilder sbuff = new StringBuilder();
+                sbuff.Append(remedy.Name.Get());
+                if (remedy.ShortIngredientList.Length == 0 || DaggerfallUnity.Settings.SDFFontRendering == true)
                 {
-                    if (i > 0)
-                        sb.Append(", ");
+                    sbuff.Append(" (");
+                    for (int i = 0; i < remedy.Ingredients.Length; ++i)
+                    {
+                        if (i > 0)
+                            sbuff.Append(", ");
 
-                    ItemTemplate template = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(remedy.Ingredients[i]);
-                    sb.Append(template.name);
+                        ItemTemplate template = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(remedy.Ingredients[i]);
+                        sbuff.Append(template.name);
+                    }
+                    sbuff.Append(")");
                 }
-                sb.Append(")");
+                else
+                {
+                    //use alternate shortened ingredient list when using the pixelated font
+                    sbuff.Append(remedy.ShortIngredientList);
+                }
 
-                listBox.AddItem(sb.ToString(), out item, -1, remedy);
-
-                item.tag = remedy;
+                listBox.AddItem(sbuff.ToString(), out ListBox.ListItem item, -1, remedy);
 
                 if (!IsRemedyNeeded(remedy))
                 {
@@ -297,12 +322,13 @@ namespace ThePenwickPapers
                 }
             }
 
-            if (count == 0)
+            if (listBox.Count == 0)
             {
                 string skillName = DaggerfallUnity.Instance.TextProvider.GetSkillName(DFCareer.Skills.Medical);
                 Utility.AddHUDText(Text.HerbalismUnknown.Get(skillName));
                 return;
             }
+
             uiManager.PushWindow(remedyPicker);
         }
 
@@ -310,7 +336,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if PC has all ingredients necessary to create remedy.
         /// </summary>
-        private static bool HasAllIngredients(Remedy remedy)
+        static bool HasAllIngredients(Remedy remedy)
         {
             bool hasAll = true;
 
@@ -325,7 +351,7 @@ namespace ThePenwickPapers
         /// Checks if PC has specified item in their inventory.
         /// Ignore quest items.
         /// </summary>
-        private static bool HasItem(int itemTemplateIndex)
+        static bool HasItem(int itemTemplateIndex)
         {
             ItemCollection items = GameManager.Instance.PlayerEntity.Items;
 
@@ -344,13 +370,9 @@ namespace ThePenwickPapers
         /// Triggered when a remedy is selected from the list-picker window.
         /// Starts the remedy production coroutine.
         /// </summary>
-        private static void RemedyPicker_OnItemPicked(int index, string itemText)
+        static void RemedyPicker_OnItemPicked(int index, string itemText)
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
-
-            //The remedy picker window prevents 'Action Complete' from being seen, so we must
-            //manually stop swallowing actions
-            ThePenwickPapersMod.StopSwallowingActions();
 
             ListBox.ListItem item = remedyPicker.ListBox.GetItem(index);
             Remedy remedy = (Remedy)item.tag;
@@ -373,21 +395,12 @@ namespace ThePenwickPapers
 
         }
 
-        /// <summary>
-        /// Triggered when the Escape key is pressed to cancel the list picker window
-        /// </summary>
-        private static void RemedyPicker_OnCancel(DaggerfallPopupWindow sender)
-        {
-            //The remedy picker window prevents 'Action Complete' from being seen, so we must
-            //manually stop swallowing actions
-            ThePenwickPapersMod.StopSwallowingActions();
-        }
 
 
         /// <summary>
         /// Coroutine produces sound effects when creating remedies, then applies the remedy when complete.
         /// </summary>
-        private static IEnumerator CreateRemedy(Remedy remedy)
+        static IEnumerator CreateRemedy(Remedy remedy)
         {
             creatingRemedy = true;
 
@@ -406,7 +419,7 @@ namespace ThePenwickPapers
 
                 const float tick = 0.1f;
 
-                float length = audioClip.length > 2f ? 2f : audioClip.length;
+                float length = Mathf.Min(audioClip.length, 2f);
 
                 for (float time = 0; time < length; time += tick)
                 {
@@ -433,7 +446,7 @@ namespace ThePenwickPapers
         /// Applies the appropriate HerbalRemedy incumbent effect status for the selected remedy.
         /// Removes the required remedy ingredients from PC inventory.
         /// </summary>
-        private static void ApplyRemedy(Remedy remedy)
+        static void ApplyRemedy(Remedy remedy)
         {
             //Using herbalism causes any existing envenomed state to be removed.
             ExitEnvenomedState();
@@ -469,14 +482,14 @@ namespace ThePenwickPapers
             RemoveIngredients(remedy);
 
             //medical skill has a large advancement multiplier (12)
-            GameManager.Instance.PlayerEntity.TallySkill(DFCareer.Skills.Medical, 20);
+            GameManager.Instance.PlayerEntity.TallySkill(DFCareer.Skills.Medical, 24);
         }
 
 
         /// <summary>
         /// Shows appropriate flavor text related to the applied remedy as HUD text.
         /// </summary>
-        private static void ShowRemedyDescriptiveText(Remedy remedy)
+        static void ShowRemedyDescriptiveText(Remedy remedy)
         {
             int intelligence = GameManager.Instance.PlayerEntity.Stats.GetLiveStatValue(DFCareer.Stats.Intelligence);
             if (intelligence > 50)
@@ -499,7 +512,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Removes all the ingredients needed for the remedy from PC inventory.
         /// </summary>
-        private static void RemoveIngredients(Remedy remedy)
+        static void RemoveIngredients(Remedy remedy)
         {
             ItemCollection playerItems = GameManager.Instance.PlayerEntity.Items;
 
@@ -518,7 +531,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Attached remedy incumbent effect to the patient.
         /// </summary>
-        private static void ApplyRemedyEffect(Remedy remedy)
+        static void ApplyRemedyEffect(Remedy remedy)
         {
             DaggerfallEntityBehaviour player = GameManager.Instance.PlayerEntityBehaviour;
 
@@ -538,8 +551,8 @@ namespace ThePenwickPapers
 
 
 
-        private const int poisonsOffset = 128;
-        private static readonly HashSet<Poisons> expungable = new HashSet<Poisons>() {
+        const int poisonsOffset = 128;
+        static readonly HashSet<Poisons> expungable = new HashSet<Poisons>() {
             Poisons.Nux_Vomica, Poisons.Arsenic, Poisons.Moonseed, Poisons.Pyrrhic_Acid
         };
 
@@ -547,7 +560,7 @@ namespace ThePenwickPapers
         /// Reduces poison time based on herbalist medical skill.
         /// Returns the number of poison rounds remaining.
         /// </summary>
-        private static int TreatPoison(bool cleansing)
+        static int TreatPoison(bool cleansing)
         {
             float medical = GameManager.Instance.PlayerEntity.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
 
@@ -596,7 +609,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Enters player into envenomed state incubent effect.
         /// </summary>
-        private static void EnterEnvenomedState(Remedy remedy)
+        static void EnterEnvenomedState(Remedy remedy)
         {
             DaggerfallEntityBehaviour player = GameManager.Instance.PlayerEntityBehaviour;
 
@@ -621,14 +634,14 @@ namespace ThePenwickPapers
         /// This is needed in cases where the player attempts another herbal remedy while
         /// envenomed status is active.
         /// </summary>
-        private static void ExitEnvenomedState()
+        static void ExitEnvenomedState()
         {
             DaggerfallEntityBehaviour player = GameManager.Instance.PlayerEntityBehaviour;
             EntityEffectManager manager = player.GetComponent<EntityEffectManager>();
 
             foreach (LiveEffectBundle bundle in manager.EffectBundles)
                 foreach (IEntityEffect effect in bundle.liveEffects)
-                    if (effect.Key.Equals(Text.Envenomed.Get()))
+                    if (effect.Key.Equals(Envenomed.EnvenomedEffectKey))
                     {
                         Envenomed envenomed = effect as Envenomed;
                         envenomed.ExitState();
@@ -640,7 +653,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if a remedy is actually needed by the patient.
         /// </summary>
-        private static bool IsRemedyNeeded(Remedy remedy)
+        static bool IsRemedyNeeded(Remedy remedy)
         {
             EntityEffectManager manager = patient.GetComponent<EntityEffectManager>();
 
@@ -711,7 +724,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Applies appropriate side effect for the remedy used.
         /// </summary>
-        private static void ApplySideEffects(Remedy remedy)
+        static void ApplySideEffects(Remedy remedy)
         {
             int value = Random.Range(8, 28);
 
@@ -764,7 +777,7 @@ namespace ThePenwickPapers
     {
         public const int MortarAndPestleTemplateIndex = 1772;
 
-        private const int baseValue = 35;    // Base gold value
+        const int baseValue = 75;    // Base gold value
 
 
         public MortarAndPestle() : this(baseValue)
@@ -783,6 +796,17 @@ namespace ThePenwickPapers
             ItemData_v1 data = base.GetSaveData();
             data.className = typeof(MortarAndPestle).ToString();
             return data;
+        }
+
+        public override string ItemName
+        {
+            get { return Text.MortarAndPestle.Get(); }
+        }
+
+
+        public override string LongName
+        {
+            get { return ItemName; }
         }
 
 
@@ -808,11 +832,13 @@ namespace ThePenwickPapers
 
     public class HerbalRemedy : IncumbentEffect
     {
-        private Herbalism.Remedy remedy;
 
         public const string HerbalEffectKey = "Herbal-Remedy";
 
+        Herbalism.Remedy remedy;
+
         public override string GroupName => remedy?.Name.Get();
+
 
         public override void SetProperties()
         {
@@ -920,21 +946,23 @@ namespace ThePenwickPapers
         }
 
 
-        private void InitRemedy()
+        /// <summary>
+        /// Sets the spell icon and gets remedy record
+        /// </summary>
+        void InitRemedy()
         {
-            ParentBundle.icon.index = 41; //blue-green puff
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
-            {
-                ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                ParentBundle.icon.index = 220; //green leaves
-            }
+            //set icon to either blue-white flame or DREAM green leaves
+            Utility.SetIcon(ParentBundle, 56, 220);
 
             //The remedy index is being stored in the ChanceBase effect value
             remedy = Herbalism.Remedies[settings.ChanceBase];
         }
 
 
-        private int CalculateDuration()
+        /// <summary>
+        /// Determines effect duration based on medical skill and remedy type
+        /// </summary>
+        int CalculateDuration()
         {
             int medical = Caster == null ? 25 : Caster.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Medical);
 
@@ -964,11 +992,12 @@ namespace ThePenwickPapers
 
     public class Envenomed : IncumbentEffect
     {
-        private Herbalism.Remedy remedy;
-
         public const string EnvenomedEffectKey = "Envenomed";
 
+        Herbalism.Remedy remedy;
+
         public override string GroupName => remedy?.Name.Get();
+
 
         public override void SetProperties()
         {
@@ -1009,12 +1038,6 @@ namespace ThePenwickPapers
             EnvenomWeapons();
         }
 
-        public void ExitState()
-        {
-            ResignAsIncumbent();
-            RoundsRemaining = 0;
-        }
-
 
         protected override bool IsLikeKind(IncumbentEffect other)
         {
@@ -1030,16 +1053,22 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Sets the poisonType value for all shortblade and bow items in PC inventory.
+        /// Resigns as incumbent and sets RoundsRemaining to zero
         /// </summary>
-        private void EnvenomWeapons()
+        public void ExitState()
         {
-            ParentBundle.icon.index = 67; //greenish streak
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
-            {
-                ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                ParentBundle.icon.index = 100; //green dagger
-            }
+            ResignAsIncumbent();
+            RoundsRemaining = 0;
+        }
+
+
+        /// <summary>
+        /// Sets the poisonType value for all shortblade and missile items in PC inventory.
+        /// </summary>
+        void EnvenomWeapons()
+        {
+            //set icon to either greenish thing or DREAM green dagger
+            Utility.SetIcon(ParentBundle, 52, 100);
 
             //The remedy index is being stored in the ChanceBase effect value
             remedy = Herbalism.Remedies[settings.ChanceBase];

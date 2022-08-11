@@ -2,114 +2,152 @@
 // Author:       DunnyOfPenwick
 // Origin Date:  June 2022
 
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 using DaggerfallWorkshop;
 using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.Items;
-using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Utility;
+using DaggerfallWorkshop.Game;
 
 namespace ThePenwickPapers
 {
 
-
-
-    public class Loot
+    public static class Loot
     {
+        public static bool InDungeon;
 
-        public static void AddItems(GameObject enemy)
+        /// <summary>
+        /// Adds appropriate items to the loot piles of certain entities.
+        /// </summary>
+        public static void AddItems(EnemyEntity entity, EnemyLootSpawnedEventArgs lootArgs)
         {
-            if (enemy.name.Contains("Penwick"))
+            if (entity.EntityBehaviour.gameObject.name.Contains("Penwick"))
                 return; //summoned creatures don't need loot adjustment
 
-            DaggerfallEntityBehaviour target = enemy.GetComponent<DaggerfallEntityBehaviour>();
-
-            if (target == null || target.Entity == null)
+            if (!Enum.IsDefined(typeof(MobileTypes), entity.MobileEnemy.ID))
                 return;
 
-            if (!(target.Entity is EnemyEntity))
-                return;
+            MobileTypes mobileType = (MobileTypes)entity.MobileEnemy.ID;
 
-            EnemyEntity entity = (EnemyEntity)target.Entity;
-
-            switch ((MobileTypes)entity.MobileEnemy.ID)
+            switch (mobileType)
             {
                 case MobileTypes.Assassin:
                 case MobileTypes.Burglar:
-                    AddPotionOfSeekingItems(entity, 25);
+                    AddLightingItems(lootArgs.Items);
+                    AddPotionOfSeekingItems(12 + entity.Level / 2, lootArgs.Items);
                     break;
+
                 case MobileTypes.Thief:
-                    AddPotionOfSeekingItems(entity, 10);
+                    AddLightingItems(lootArgs.Items);
+                    AddPotionOfSeekingItems(entity.Level / 2, lootArgs.Items);
                     break;
-                case MobileTypes.GiantScorpion:
-                    AddItem(entity, 35, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Giant_scorpion_stinger);
+
+                case MobileTypes.Acrobat:
+                case MobileTypes.Rogue:
+                case MobileTypes.Nightblade:
+                    AddLightingItems(lootArgs.Items);
                     break;
-                case MobileTypes.Spider:
-                    AddItem(entity, 30, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Spider_venom);
+
+                case MobileTypes.Warrior:
+                case MobileTypes.Knight:
+                case MobileTypes.Archer:
+                case MobileTypes.Ranger:
+                    AddLightingItems(lootArgs.Items);
+                    AddArrows(lootArgs.Items);
                     break;
-                case MobileTypes.Mummy:
-                    AddItem(entity, 40, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Mummy_wrappings);
-                    break;
-                case MobileTypes.Barbarian:
+
                 case MobileTypes.Healer:
-                    AddItem(entity, 28, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Elixir_vitae);
-                    AddItem(entity, 24, ItemGroups.PlantIngredients2, (int)PlantIngredients2.Aloe);
-                    AddItem(entity, 27, ItemGroups.PlantIngredients1, (int)PlantIngredients1.Root_bulb);
-                    AddItem(entity, 18 + entity.Level, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Troll_blood);
+                case MobileTypes.Barbarian:
+                case MobileTypes.Monk:
+                    AddLightingItems(lootArgs.Items);
+                    //Herbalism healing ingredients
+                    AddItem(28, lootArgs.Items, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Elixir_vitae);
+                    AddItem(24, lootArgs.Items, ItemGroups.PlantIngredients2, (int)PlantIngredients2.Aloe);
+                    AddItem(27, lootArgs.Items, ItemGroups.PlantIngredients1, (int)PlantIngredients1.Root_bulb);
+                    AddItem(15 + entity.Level, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Troll_blood);
                     break;
+
                 case MobileTypes.Mage:
                 case MobileTypes.Sorcerer:
-                    AddItem(entity, 27, ItemGroups.MetalIngredients, (int)MetalIngredients.Silver);
-                    AddItem(entity, 25, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Nectar);
-                    AddItem(entity, 25, ItemGroups.Gems, (int)Gems.Amber);
-                    AddItem(entity, 14 + entity.Level, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Dragons_scales);
-                    AddSoulTrap(entity, 3 + entity.Level);
+                    //Herbalism magicka recovery ingredients
+                    AddItem(27, lootArgs.Items, ItemGroups.MetalIngredients, (int)MetalIngredients.Silver);
+                    AddItem(25, lootArgs.Items, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Nectar);
+                    AddItem(25, lootArgs.Items, ItemGroups.Gems, (int)Gems.Amber);
+                    AddItem(entity.Level * 2, lootArgs.Items, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Dragons_scales);
+                    AddSoulTrap(entity.Level, lootArgs.Items, entity);
                     break;
+
                 case MobileTypes.Bard:
                 case MobileTypes.Battlemage:
                 case MobileTypes.Spellsword:
-                    AddSoulTrap(entity, entity.Level - 6);
+                    AddSoulTrap(entity.Level - 8, lootArgs.Items, entity);
                     break;
+
+                case MobileTypes.GiantScorpion:
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Giant_scorpion_stinger);
+                    break;
+
+                case MobileTypes.Spider:
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Spider_venom);
+                    break;
+
+                case MobileTypes.Mummy:
+                    AddItem(50, lootArgs.Items, ItemGroups.CreatureIngredients2, (int)CreatureIngredients2.Mummy_wrappings);
+                    break;
+
                 case MobileTypes.Orc:
                 case MobileTypes.OrcSergeant:
                 case MobileTypes.OrcWarlord:
-                    AddItem(entity, 30, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Orcs_blood);
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Orcs_blood);
                     break;
+
                 case MobileTypes.OrcShaman:
-                    AddItem(entity, 30, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Orcs_blood);
-                    AddSoulTrap(entity, 10);
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Orcs_blood);
+                    AddSoulTrap(9, lootArgs.Items, entity);
                     break;
+
                 case MobileTypes.Lich:
-                    AddItem(entity, 30, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Lich_dust);
-                    AddSoulTrap(entity, 15);
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Lich_dust);
+                    AddSoulTrap(15, lootArgs.Items, entity);
                     break;
+
                 case MobileTypes.AncientLich:
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Lich_dust);
+                    AddSoulTrap(20, lootArgs.Items, entity);
+                    break;
+
                 case MobileTypes.VampireAncient:
                 case MobileTypes.DaedraLord:
-                    AddSoulTrap(entity, 22);
+                    AddSoulTrap(13, lootArgs.Items, entity);
                     break;
+
                 case MobileTypes.SabertoothTiger:
-                    AddItem(entity, 40, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Big_tooth);
+                    AddItem(40, lootArgs.Items, ItemGroups.MiscellaneousIngredients1, (int)MiscellaneousIngredients1.Big_tooth);
                     break;
+
                 case MobileTypes.Nymph:
-                    AddItem(entity, 40, ItemGroups.CreatureIngredients3, (int)CreatureIngredients3.Nymph_hair);
+                    AddItem(40, lootArgs.Items, ItemGroups.CreatureIngredients3, (int)CreatureIngredients3.Nymph_hair);
                     break;
+
                 case MobileTypes.Wereboar:
-                    AddItem(entity, 40, ItemGroups.CreatureIngredients3, (int)CreatureIngredients3.Wereboar_tusk);
+                    AddItem(40, lootArgs.Items, ItemGroups.CreatureIngredients3, (int)CreatureIngredients3.Wereboar_tusk);
                     break;
+
                 case MobileTypes.Werewolf:
-                    AddItem(entity, 25, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Werewolfs_blood);
+                    AddItem(30, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Werewolfs_blood);
                     break;
+
                 case MobileTypes.Ghost:
-                    AddItem(entity, 35, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Ectoplasm);
+                    AddItem(35, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Ectoplasm);
                     break;
+
                 case MobileTypes.Wraith:
-                    AddItem(entity, 35, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Wraith_essence);
+                    AddItem(35, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Wraith_essence);
                     break;
+
                 case MobileTypes.Giant:
-                    AddItem(entity, 40, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Giant_blood);
+                    AddItem(40, lootArgs.Items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Giant_blood);
                     break;
 
                 default:
@@ -119,17 +157,26 @@ namespace ThePenwickPapers
         }
 
 
-        private static void AddItem(EnemyEntity entity, int chance, ItemGroups group, int templateIndex)
+        /// <summary>
+        /// If chance roll succeeds, adds specified item to the item collection.
+        /// </summary>
+        static bool AddItem(int chance, ItemCollection items, ItemGroups group, int templateIndex)
         {
-            if (Dice100.FailedRoll(chance))
-                return;
+            if (Dice100.SuccessRoll(chance))
+            {
+                DaggerfallUnityItem item = ItemBuilder.CreateItem(group, templateIndex);
+                items.AddItem(item);
+                return true;
+            }
 
-            DaggerfallUnityItem item = ItemBuilder.CreateItem(group, templateIndex);
-            entity.Items.AddItem(item);
+            return false;
         }
 
 
-        private static void AddSoulTrap(EnemyEntity entity, int chance)
+        /// <summary>
+        /// If chance roll succeeds, adds an empty or filled soul trap to the item collection
+        /// </summary>
+        static void AddSoulTrap(int chance, ItemCollection items, EnemyEntity entity)
         {
             if (Dice100.FailedRoll(chance))
                 return;
@@ -142,30 +189,75 @@ namespace ThePenwickPapers
                 item.TrappedSoulType = MobileTypes.None;
             }
 
-            entity.Items.AddItem(item);
+            items.AddItem(item);
         }
 
 
-        private static void AddPotionOfSeekingItems(EnemyEntity entity, int baseChance)
+        /// <summary>
+        /// If chance roll succeeds, adds potion of seeking or its ingredients or recipe to the item collection
+        /// </summary>
+        static void AddPotionOfSeekingItems(int chance, ItemCollection items)
         {
             int potionOfSeekingKey = ThePenwickPapersMod.Instance.GetPotionOfSeekingRecipeKey();
 
-            if (Dice100.SuccessRoll(baseChance / 2))
+            if (Dice100.SuccessRoll(chance / 4))
             {
                 DaggerfallUnityItem potionRecipe = new DaggerfallUnityItem(ItemGroups.MiscItems, 4) { PotionRecipeKey = potionOfSeekingKey };
-                entity.Items.AddItem(potionRecipe);
-            }
-            if (Dice100.SuccessRoll(baseChance))
-            {
-                DaggerfallUnityItem potion = ItemBuilder.CreatePotion(potionOfSeekingKey);
-                entity.Items.AddItem(potion);
+                items.AddItem(potionRecipe);
             }
 
-            AddItem(entity, baseChance, ItemGroups.PlantIngredients1, (int)PlantIngredients1.Root_tendrils);
-            AddItem(entity, baseChance, ItemGroups.PlantIngredients2, (int)PlantIngredients2.Black_poppy);
-            AddItem(entity, baseChance, ItemGroups.MetalIngredients, (int)MetalIngredients.Lodestone);
-            AddItem(entity, baseChance, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Basilisk_eye);
+            if (Dice100.SuccessRoll(chance / 2))
+            {
+                DaggerfallUnityItem potion = ItemBuilder.CreatePotion(potionOfSeekingKey);
+                items.AddItem(potion);
+            }
+
+            //might carry ingredients to make potion of seeking
+            AddItem(chance, items, ItemGroups.PlantIngredients1, (int)PlantIngredients1.Root_tendrils);
+            AddItem(chance, items, ItemGroups.PlantIngredients2, (int)PlantIngredients2.Black_poppy);
+            AddItem(chance, items, ItemGroups.MetalIngredients, (int)MetalIngredients.Lodestone);
+            AddItem(chance, items, ItemGroups.CreatureIngredients1, (int)CreatureIngredients1.Basilisk_eye);
         }
+
+
+        /// <summary>
+        /// Chance of adding some lighting items (torches, lantern, oil) if in a dungeon
+        /// </summary>
+        static void AddLightingItems(ItemCollection items)
+        {
+            if (!InDungeon)
+                return;
+
+            if (Dice100.SuccessRoll(40))
+            {
+                DaggerfallUnityItem item = ItemBuilder.CreateItem(ItemGroups.UselessItems2, (int)UselessItems2.Lantern);
+                item.currentCondition = UnityEngine.Random.Range(0, 90);
+                items.AddItem(item);
+
+                while (Dice100.SuccessRoll(60))
+                    AddItem(100, items, ItemGroups.UselessItems2, (int)UselessItems2.Oil);
+            }
+            else
+            {
+                while (Dice100.SuccessRoll(50))
+                    AddItem(100, items, ItemGroups.UselessItems2, (int)UselessItems2.Torch);
+            }
+        }
+
+
+        /// <summary>
+        /// Chance of adding some arrows
+        /// </summary>
+        static void AddArrows(ItemCollection items)
+        {
+            if (Dice100.SuccessRoll(60))
+            {
+                DaggerfallUnityItem item = ItemBuilder.CreateItem(ItemGroups.Weapons, (int)Weapons.Arrow);
+                item.stackCount = UnityEngine.Random.Range(2, 20);
+                items.AddItem(item);
+            }
+        }
+
 
 
 

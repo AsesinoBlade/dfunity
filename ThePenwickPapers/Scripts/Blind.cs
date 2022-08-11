@@ -18,7 +18,7 @@ namespace ThePenwickPapers
 
     public class Blind : IncumbentEffect
     {
-        public static readonly string EffectKey = "Blind";
+        public const string EffectKey = "Blind";
 
         public static readonly HashSet<MobileTypes> Immune = new HashSet<MobileTypes>() {
             MobileTypes.AncientLich, MobileTypes.Ghost, MobileTypes.GiantBat,
@@ -26,8 +26,8 @@ namespace ThePenwickPapers
             MobileTypes.Wraith, MobileTypes.Zombie
         };
 
-        private float originalSightRadius = -1f;
-        private float originalHearingRadius = -1f;
+        float originalSightRadius = -1f;
+        float originalHearingRadius = -1f;
 
         public override string GroupName => Text.BlindGroupName.Get();
         public override TextFile.Token[] SpellMakerDescription => GetSpellMakerDescription();
@@ -95,10 +95,7 @@ namespace ThePenwickPapers
             noise = Mathf.Clamp(noise, 1.3f, originalHearingRadius);
 
             if (entityBehaviour.Entity.Career.AcuteHearing)
-                noise *= 1.3f;
-
-            if (entityBehaviour.Entity.ImprovedAcuteHearing)
-                noise *= 1.5f;
+                noise *= entityBehaviour.Entity.ImprovedAcuteHearing ? 1.5f : 1.3f;
 
             //Set the entity's hearing radius based on target noise level
             senses.HearingRadius = noise;
@@ -106,51 +103,13 @@ namespace ThePenwickPapers
             float distance = Vector3.Distance(entityBehaviour.transform.position, senses.Target.transform.position);
 
             //chance (per frame) of being disoriented and losing target, must reacquire
-            if (distance > noise && Random.Range(0f, 2.5f) < Time.deltaTime)
+            if (distance > noise && Random.Range(0f, 2.5f) < Time.smoothDeltaTime)
             {
                 senses.Target = null;
                 senses.DetectedTarget = false;
                 senses.HearingRadius = originalHearingRadius;
             }
 
-        }
-
-
-        private float GetBaseLoudness(DaggerfallEntityBehaviour target)
-        {
-            float loudness = 1f;
-
-            bool grounded;
-            if (target.EntityType == EntityTypes.Player)
-                grounded = target.GetComponent<PlayerMotor>().IsGrounded;
-            else
-                grounded = !target.GetComponent<EnemyMotor>().IsLevitating;
-
-            foreach (DaggerfallUnityItem item in target.Entity.ItemEquipTable.EquipTable)
-            {
-                if (item == null || item.ItemGroup != ItemGroups.Armor)
-                    continue;
-
-                float itemLoudness = (item.NativeMaterialValue == (int)ArmorMaterialTypes.Leather) ? 0.3f : 0.9f;
-                if (item.EquipSlot == EquipSlots.Feet)
-                    itemLoudness *= grounded ? 4 : 1;
-                else if (item.EquipSlot == EquipSlots.LegsArmor)
-                    itemLoudness *= grounded  ? 2 : 1;
-                else if (item.EquipSlot == EquipSlots.Head)
-                    itemLoudness *= 0.5f;
-
-                loudness += itemLoudness;
-            }
-
-            //small luck adjustment
-            float luck = target.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck);
-            loudness -= (luck - 50) / 100;
-
-            float stealth = target.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Stealth);
-            stealth = Mathf.Clamp(stealth, 0, 100);
-            float targetStealthAdjust = (100.0f - stealth) / 100.0f;
-
-            return loudness * targetStealthAdjust;
         }
 
 
@@ -188,16 +147,57 @@ namespace ThePenwickPapers
         }
 
 
-        private void ApplyBlindStatus()
+
+        /// <summary>
+        /// Calculate how much noise the target is making, based on armor worn, stealth, etc.
+        /// </summary>
+        float GetBaseLoudness(DaggerfallEntityBehaviour target)
+        {
+            float loudness = 1f;
+
+            bool grounded;
+            if (target.EntityType == EntityTypes.Player)
+                grounded = target.GetComponent<PlayerMotor>().IsGrounded;
+            else
+                grounded = !target.GetComponent<EnemyMotor>().IsLevitating;
+
+            foreach (DaggerfallUnityItem item in target.Entity.ItemEquipTable.EquipTable)
+            {
+                if (item == null || item.ItemGroup != ItemGroups.Armor)
+                    continue;
+
+                float itemLoudness = (item.NativeMaterialValue == (int)ArmorMaterialTypes.Leather) ? 0.3f : 0.9f;
+                if (item.EquipSlot == EquipSlots.Feet)
+                    itemLoudness *= grounded ? 4 : 1;
+                else if (item.EquipSlot == EquipSlots.LegsArmor)
+                    itemLoudness *= grounded ? 2 : 1;
+                else if (item.EquipSlot == EquipSlots.Head)
+                    itemLoudness *= 0.5f;
+
+                loudness += itemLoudness;
+            }
+
+            //small luck adjustment
+            float luck = target.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Luck);
+            loudness -= (luck - 50) / 100;
+
+            float stealth = target.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Stealth);
+            stealth = Mathf.Clamp(stealth, 0, 100);
+            float targetStealthAdjust = (100.0f - stealth) / 100.0f;
+
+            return loudness * targetStealthAdjust;
+        }
+
+
+        /// <summary>
+        /// If player, set HUD to black.  If monster, reduce sight radius.
+        /// </summary>
+        void ApplyBlindStatus()
         {
             if (ParentBundle.icon.index == 0)
             {
-                ParentBundle.icon.index = 37; //dark cloud thing
-                if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
-                {
-                    ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                    ParentBundle.icon.index = 126; //dark cloud
-                }
+                //set icon to either dark cloud or DREAM dark cloud
+                Utility.SetIcon(ParentBundle, 37, 126);
             }
 
             DaggerfallEntityBehaviour entityBehaviour = GetPeeredEntityBehaviour(manager);
@@ -223,14 +223,14 @@ namespace ThePenwickPapers
                 {
                     originalSightRadius = senses.SightRadius;
                     originalHearingRadius = senses.HearingRadius;
-                    senses.SightRadius = 1.8f; //can only see directly in front of them
+                    senses.SightRadius = 1.7f; //can only see directly in front of them
                 }
             }
 
         }
 
 
-        private TextFile.Token[] GetSpellMakerDescription()
+        TextFile.Token[] GetSpellMakerDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -239,7 +239,7 @@ namespace ThePenwickPapers
                 Text.BlindSpellMakerDuration.Get());
         }
 
-        private TextFile.Token[] GetSpellBookDescription()
+        TextFile.Token[] GetSpellBookDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,

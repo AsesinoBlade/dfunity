@@ -1,19 +1,27 @@
+// Project:     The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
+// Origin Date: Feb 2022
+
+
 using System.Collections.Generic;
+using System.Collections;
+using UnityEngine;
 using DaggerfallWorkshop;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Utility;
-using System.Collections;
-using UnityEngine;
-
+using DaggerfallWorkshop.Game.Items;
+using DaggerfallWorkshop.Game.UserInterfaceWindows;
+using DaggerfallWorkshop.Game.UserInterface;
 
 namespace ThePenwickPapers
 {
 
 
-    public class Utility
+    public static class Utility
     {
+        static readonly string[] lineSeparators = new string[] { "\\r\\n", "\\n\\r", "\\r", "\\n", "\r", "\n" };
 
 
         /// <summary>
@@ -44,16 +52,79 @@ namespace ThePenwickPapers
 
 
         /// <summary>
+        /// Shows text in a message box.  Text containing newlines will be split into separate lines.
+        /// </summary>
+        public static void MessageBox(string text, IUserInterfaceWindow previous = null)
+        {
+            DaggerfallMessageBox msgBox = CreateMessageBox(text, previous);
+
+            msgBox.Show();
+        }
+
+
+        /// <summary>
+        /// Creates (but doesn't show) a message box.  Text containing newlines will be split into separate lines.
+        /// </summary>
+        public static DaggerfallMessageBox CreateMessageBox(string text, IUserInterfaceWindow previous = null)
+        {
+            if (previous == null)
+                previous = DaggerfallUI.UIManager.TopWindow;
+
+            DaggerfallMessageBox msgBox = new DaggerfallMessageBox(DaggerfallUI.UIManager, previous)
+            {
+                ClickAnywhereToClose = true
+            };
+
+            string[] rows = text.Split(lineSeparators, System.StringSplitOptions.None);
+
+            msgBox.SetText(rows);
+            
+            return msgBox;
+        }
+
+
+        /// <summary>
+        /// Shows sequence of multiple message boxes displaying supplied text, one after the other.
+        /// </summary>
+        public static void MessageBoxSequence(params string[] text)
+        {
+            MessageBoxSequence(new List<string>(text));
+        }
+
+
+        /// <summary>
+        /// Shows sequence of multiple message boxes displaying supplied text, one after the other.
+        /// </summary>
+        public static void MessageBoxSequence(List<string> text)
+        {
+            if (text.Count == 0)
+                return;
+
+            DaggerfallMessageBox firstMsgBox = CreateMessageBox(text[0]);
+
+            DaggerfallMessageBox previousMsgBox = firstMsgBox;
+
+            for (int i = 1; i < text.Count; ++i)
+            {
+                DaggerfallMessageBox msgBox = CreateMessageBox(text[i], previousMsgBox);
+                previousMsgBox.AddNextMessageBox(msgBox);
+                previousMsgBox = msgBox;
+            }
+
+            firstMsgBox.Show();
+        }
+
+
+        /// <summary>
         /// Creates a target GameObject that provides an invisible 'enemy' for an entity motor to move towards.
         /// </summary>
-        public static DaggerfallEntityBehaviour CreateTarget(Vector3 location)
+        public static DaggerfallEntityBehaviour CreateTarget(Vector3 location, MobileTypes mobileType = MobileTypes.GiantBat)
         {
-            MobileTypes mobileType = MobileTypes.GiantBat;
+            string name = "Penwick Target";
 
-            string displayName = "Penwick Target";
             Transform parent = GameObjectHelper.GetBestParent();
 
-            GameObject go = GameObjectHelper.InstantiatePrefab(DaggerfallUnity.Instance.Option_EnemyPrefab.gameObject, displayName, parent, location);
+            GameObject go = GameObjectHelper.InstantiatePrefab(DaggerfallUnity.Instance.Option_EnemyPrefab.gameObject, name, parent, location);
             SetupDemoEnemy setupEnemy = go.GetComponent<SetupDemoEnemy>();
 
             setupEnemy.ApplyEnemySettings(mobileType, MobileReactions.Hostile, MobileGender.Male, 0, false);
@@ -64,16 +135,47 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Checks if specified item is equipped.
+        /// </summary>
+        public static bool IsItemEquipped(int itemIndex, DaggerfallEntity onEntity = null)
+        {
+            return GetEquippedItem(itemIndex, onEntity) != null;
+        }
+
+
+        /// <summary>
+        /// Returns specified item if equipped, null otherwise.
+        /// If onEntity is not specified, the player entity is assumed.
+        /// </summary>
+        public static DaggerfallUnityItem GetEquippedItem(int itemIndex, DaggerfallEntity onEntity = null)
+        {
+            if (onEntity == null)
+                onEntity = GameManager.Instance.PlayerEntity;
+
+            foreach (DaggerfallUnityItem item in onEntity.ItemEquipTable.EquipTable)
+            {
+                if (item != null && item.TemplateIndex == itemIndex)
+                    return item;
+            }
+
+            return null;
+        }
+
+
+        /// <summary>
+        /// Gets list of creatures within specified range of the player.
+        /// </summary>
         public static List<DaggerfallEntityBehaviour> GetNearbyEntities(float range = 14)
         {
             List<DaggerfallEntityBehaviour> entities = new List<DaggerfallEntityBehaviour>();
 
             List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Enemy, range);
-            foreach (PlayerGPS.NearbyObject obj in nearby)
+            foreach (PlayerGPS.NearbyObject no in nearby)
             {
-                if (obj.gameObject && obj.gameObject.activeInHierarchy)
+                if (no.gameObject && no.gameObject.activeInHierarchy)
                 {
-                    DaggerfallEntityBehaviour entity = obj.gameObject.GetComponent<DaggerfallEntityBehaviour>();
+                    DaggerfallEntityBehaviour entity = no.gameObject.GetComponent<DaggerfallEntityBehaviour>();
                     if (entity)
                         entities.Add(entity);
                 }
@@ -83,13 +185,14 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Gets list of creatures within range of specified location. Max 50 meters from player.
+        /// </summary>
         public static List<DaggerfallEntityBehaviour> GetNearbyEntities(Vector3 location, float range)
         {
-            List<DaggerfallEntityBehaviour> entities = GetNearbyEntities(40);
-
             List<DaggerfallEntityBehaviour> near = new List<DaggerfallEntityBehaviour>();
 
-            foreach (DaggerfallEntityBehaviour entity in entities)
+            foreach (DaggerfallEntityBehaviour entity in GetNearbyEntities(50))
             {
                 float distance = Vector3.Distance(location, entity.transform.position);
                 if (distance <= range)
@@ -100,6 +203,34 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Gets list of loot (bodies or treasure piles) within range of specified location. Max 50 meters from player.
+        /// </summary>
+        public static List<DaggerfallLoot> GetNearbyLoot(Vector3 location, float range)
+        {
+            List<DaggerfallLoot> nearbyLoot = new List<DaggerfallLoot>();
+
+            List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Treasure, 50);
+            foreach (PlayerGPS.NearbyObject no in nearby)
+            {
+                if (no.gameObject && no.gameObject.activeInHierarchy)
+                {
+                    DaggerfallLoot loot = no.gameObject.GetComponent<DaggerfallLoot>();
+                    float distance = Vector3.Distance(location, loot.transform.position);
+                    if (distance <= range)
+                    {
+                        nearbyLoot.Add(loot);
+                    }
+                }
+            }
+
+            return nearbyLoot;
+        }
+
+
+        /// <summary>
+        /// Determines of there are hostile enemies nearby that can see the player.
+        /// </summary>
         public static bool IsPlayerThreatened()
         {
             List<DaggerfallEntityBehaviour> creatures = GetNearbyEntities();
@@ -139,11 +270,16 @@ namespace ThePenwickPapers
             Vector3 direction = (playerPos - creaturePos).normalized;
 
             int layerMask = 1; //just looking for terrain hits
-            RaycastHit hit; //for debugging purposes
-            return !Physics.SphereCast(creature.transform.position, 0.2f, direction, out hit, distance, layerMask);
+
+            Ray ray = new Ray(creature.transform.position, direction);
+
+            return !Physics.SphereCast(ray, 0.2f, distance, layerMask);
         }
 
 
+        /// <summary>
+        /// Check if specified entity has an active Blind effect
+        /// </summary>
         public static bool IsBlind(DaggerfallEntityBehaviour behaviour)
         {
             EntityEffectManager effectManager = behaviour.GetComponent<EntityEffectManager>();
@@ -162,6 +298,48 @@ namespace ThePenwickPapers
 
             return false;
         }
+
+
+        /// <summary>
+        /// Check if player is currently attacking, spellcasting, booting, throwing grappling hook, or waving hands
+        /// </summary>
+        public static bool IsShowingHandAnimation()
+        {
+            if (GameManager.Instance.PlayerSpellCasting.IsPlayingAnim)
+                return true;
+
+            if (GameManager.Instance.WeaponManager.ScreenWeapon.IsAttacking())
+                return true;
+
+            if (ThePenwickPapersMod.TheBootAnimator.enabled)
+                return true;
+
+            if (ThePenwickPapersMod.GrapplingHookAnimator.enabled)
+                return true;
+
+            if (ThePenwickPapersMod.HandWaveAnimator.enabled)
+                return true;
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// Sets spell icon for bundle, using DREAM icon if 'DREAM Icons' is installed and 'DREAM Sprites' is active
+        /// </summary>
+        public static void SetIcon(LiveEffectBundle bundle, int defaultIcon, int dreamIcon)
+        {
+            bundle.icon.index = defaultIcon;
+
+            const string dreamIcons = "D.R.E.A.M. Icons";
+            if (ThePenwickPapersMod.UsingHiResSprites && DaggerfallUI.Instance.SpellIconCollection.HasPack(dreamIcons))
+            {
+                bundle.icon.key = dreamIcons;
+                bundle.icon.index = dreamIcon;
+            }
+
+        }
+
 
 
     } //class Utility

@@ -1,9 +1,10 @@
-// Project:   Reanimate Mod for Daggerfall Unity
-// Author:    DunnyOfPenwick
-// Origin Date:  Feb 2022
+// Project:     Reanimate, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
+// Origin Date: Feb 2022
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using DaggerfallConnect;
 using DaggerfallConnect.Arena2;
@@ -16,7 +17,6 @@ using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.Formulas;
 using DaggerfallWorkshop.Game.Utility;
-using System.Collections.Generic;
 using DaggerfallWorkshop.Game.UserInterfaceWindows;
 using DaggerfallWorkshop.Game.UserInterface;
 using DaggerfallWorkshop.Game.Guilds;
@@ -26,11 +26,14 @@ namespace ThePenwickPapers
 {
     public class Reanimate : BaseEntityEffect
     {
-        private static bool alreadyCastingReanimate; //used to prevent multiple reanimates in same spell bundle
+        const string effectKey = "Reanimate";
 
-        private string effectKey = "Reanimate";
-        private DaggerfallLoot chosenVessel;
-        private int soulChanceMod = 0;
+        static bool alreadyCastingReanimate; //used to prevent multiple reanimates in same spell bundle
+
+        DaggerfallLoot chosenVessel;
+        int soulChanceMod = 0;
+        ListPickerWindow soulPicker;
+
 
 
         /// <summary>
@@ -41,7 +44,6 @@ namespace ThePenwickPapers
         {
             return (int)soulType < soulStrength.Length ? soulStrength[(int)soulType] : 50;
         }
-
 
 
         public override void SetProperties()
@@ -55,7 +57,7 @@ namespace ThePenwickPapers
             properties.DisableReflectiveEnumeration = true;
             properties.SupportChance = true;
             properties.ChanceFunction = ChanceFunction.Custom;
-            properties.ChanceCosts = MakeEffectCosts(12, 60, 220);
+            properties.ChanceCosts = MakeEffectCosts(12, 60, 300);
         }
 
 
@@ -77,7 +79,7 @@ namespace ThePenwickPapers
             //to prevent casting multiple reanimates in same spell bundle
             if (alreadyCastingReanimate)
             {
-                RefundSpellCost(manager);
+                RefundSpellCost();
                 return;
             }
 
@@ -107,7 +109,7 @@ namespace ThePenwickPapers
 
             if (!success)
             {
-                RefundSpellCost(manager);
+                RefundSpellCost();
                 End();
             }
         }
@@ -124,7 +126,7 @@ namespace ThePenwickPapers
         {
             //modify the RollChance to include willpower bonus
             int modifiedChance = ChanceValue();
-            modifiedChance += Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Willpower);
+            modifiedChance += Caster.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Willpower) - 10;
             modifiedChance -= soulChanceMod; //more powerful souls are harder to control
 
             modifiedChance = Mathf.Clamp(modifiedChance, 3, 97);
@@ -139,7 +141,7 @@ namespace ThePenwickPapers
         /// Checks the caster's inventory for the spell requirements: a ceremonial dagger and the soul
         /// of some poor sap.
         /// </summary>
-        private bool HasRequiredItems()
+        bool HasRequiredItems()
         {
             ItemTemplate itemTemplate = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate((int)ReligiousItems.Holy_dagger);
             DaggerfallUnityItem item = Caster.Entity.Items.GetItem(ItemGroups.ReligiousItems, (int)ReligiousItems.Holy_dagger, false, false, false);
@@ -167,26 +169,26 @@ namespace ThePenwickPapers
         /// <summary>
         /// Who went shopping for souls today?
         /// </summary>
-        private void ShowSoulPicker()
+        void ShowSoulPicker()
         {
             IUserInterfaceManager uiManager = DaggerfallUI.UIManager;
 
-            List<MobileTypes> souls = GetFilledSoulTraps();
-            if (souls.Count == 1)
+            List<DaggerfallUnityItem> soulTraps = GetFilledSoulTraps();
+            if (soulTraps.Count == 1)
             {
                 //just one soul, selection window not needed
-                StartSummoning(0);
+                StartSummoning(soulTraps[0]);
                 return;
             }
 
-            DaggerfallListPickerWindow soulPicker = new DaggerfallListPickerWindow(uiManager, uiManager.TopWindow);
+            soulPicker = new ListPickerWindow(uiManager, uiManager.TopWindow);
             soulPicker.OnItemPicked += SoulPicker_OnItemPicked;
+            soulPicker.OnCancel += SoulPicker_OnCancel;
 
-
-            foreach (MobileTypes soul in souls)
+            foreach (DaggerfallUnityItem trap in soulTraps)
             {
-                string soulName = TextManager.Instance.GetLocalizedEnemyName((int)soul);
-                soulPicker.ListBox.AddItem(soulName);
+                string soulName = TextManager.Instance.GetLocalizedEnemyName((int)trap.TrappedSoulType);
+                soulPicker.ListBox.AddItem(soulName, -1, trap);
             }
 
             uiManager.PushWindow(soulPicker);
@@ -196,22 +198,35 @@ namespace ThePenwickPapers
         /// <summary>
         /// I'll take the frosted one, with sprinkles
         /// </summary>
-        private void SoulPicker_OnItemPicked(int index, string soulName)
+        void SoulPicker_OnItemPicked(int index, string soulName)
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
 
-            StartSummoning(index);
+            DaggerfallUnityItem soulTrap = soulPicker.ListBox.GetItem(index).tag as DaggerfallUnityItem;
+
+            StartSummoning(soulTrap);
+
+            alreadyCastingReanimate = false;
         }
 
 
         /// <summary>
-        /// Starts the reanimation process and handles costs.
+        /// If player cancels out of soul selection window, refund spell cost
         /// </summary>
-        private void StartSummoning(int soulIndex)
+        void SoulPicker_OnCancel(DaggerfallPopupWindow sender)
         {
-            List<MobileTypes> souls = GetFilledSoulTraps();
+            RefundSpellCost();
 
-            GameObject go = Summon(souls[soulIndex]);
+            alreadyCastingReanimate = false;
+        }
+
+
+        /// <summary>
+        /// Starts the reanimation process and handles extra costs.
+        /// </summary>
+        void StartSummoning(DaggerfallUnityItem soulTrap)
+        {
+            GameObject go = Summon(soulTrap.TrappedSoulType);
 
             //performing the reanimation ritual
             Transform camera = GameManager.Instance.MainCamera.transform;
@@ -221,8 +236,12 @@ namespace ThePenwickPapers
             DaggerfallUI.Instance.PlayOneShot(SoundClips.EquipShortBlade);
 
             Caster.Entity.DecreaseHealth(1);
-            Caster.Entity.DecreaseFatigue(10, true);
-            RemoveSoul(souls[soulIndex]);
+            Caster.Entity.DecreaseFatigue(20, true);
+
+            //empty the soul trap (soul traps aren't stackable)
+            soulTrap.TrappedSoulType = MobileTypes.None;
+            if (!soulTrap.IsArtifact && !soulTrap.IsEnchanted)
+                soulTrap.value = 5000;
 
             AdjustFactionReps(); //those Divines are loving you now
         }
@@ -231,21 +250,19 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks the PC's inventory and returns the list of doomed souls available.
         /// </summary>
-        private List<MobileTypes> GetFilledSoulTraps()
+        List<DaggerfallUnityItem> GetFilledSoulTraps()
         {
-            List<MobileTypes> filledTraps = new List<MobileTypes>();
+            List<DaggerfallUnityItem> filledTraps = new List<DaggerfallUnityItem>();
 
             // Count regular filled soul gems
             ItemCollection casterItems = Caster.Entity.Items;
             for (int i = 0; i < casterItems.Count; i++)
             {
                 DaggerfallUnityItem item = casterItems.GetItem(i);
-                if (item != null && item.IsOfTemplate(ItemGroups.MiscItems, (int)MiscItems.Soul_trap))
+                if (!item.IsQuestItem && item.IsOfTemplate(ItemGroups.MiscItems, (int)MiscItems.Soul_trap))
                 {
                     if (item.TrappedSoulType != MobileTypes.None)
-                    {
-                        filledTraps.Add(item.TrappedSoulType);
-                    }
+                        filledTraps.Add(item);
                 }
             }
 
@@ -253,64 +270,27 @@ namespace ThePenwickPapers
             List<DaggerfallUnityItem> amulets = Caster.Entity.Items.SearchItems(ItemGroups.Jewellery, (int)Jewellery.Amulet);
             foreach (DaggerfallUnityItem amulet in amulets)
             {
-                if (amulet.ContainsEnchantment(EnchantmentTypes.SpecialArtifactEffect, (short)ArtifactsSubTypes.Azuras_Star) && amulet.TrappedSoulType != MobileTypes.None)
-                {
-                    filledTraps.Add(amulet.TrappedSoulType);
-                }
+                if (amulet.ContainsEnchantment(EnchantmentTypes.SpecialArtifactEffect, (short)ArtifactsSubTypes.Azuras_Star))
+                    if (amulet.TrappedSoulType != MobileTypes.None)
+                        filledTraps.Add(amulet);
             }
 
             return filledTraps;
         }
 
 
-        /// <summary>
-        /// Remove the spent soul gem from the PC inventory (or clean out Azura's Star)
-        /// </summary>
-        void RemoveSoul(MobileTypes soulType)
-        {
-            // Remove regular filled soul traps matching soul type first
-            ItemCollection casterItems = Caster.Entity.Items;
-            for (int i = 0; i < casterItems.Count; i++)
-            {
-                DaggerfallUnityItem item = casterItems.GetItem(i);
-                if (item != null && item.IsOfTemplate(ItemGroups.MiscItems, (int)MiscItems.Soul_trap))
-                {
-                    if (item.TrappedSoulType == soulType)
-                    {
-                        //remove the soul, not the soul gem
-                        item.TrappedSoulType = MobileTypes.None;
-                        return;
-                    }
-                }
-            }
-            
-            // Empty Azura's Star matching trapped soul type
-            List<DaggerfallUnityItem> amulets = Caster.Entity.Items.SearchItems(ItemGroups.Jewellery, (int)Jewellery.Amulet);
-            foreach (DaggerfallUnityItem amulet in amulets)
-            {
-                if (amulet.ContainsEnchantment(EnchantmentTypes.SpecialArtifactEffect, (short)ArtifactsSubTypes.Azuras_Star))
-                {
-                    if (amulet.TrappedSoulType == soulType)
-                    {
-                        amulet.TrappedSoulType = MobileTypes.None;
-                        return;
-                    }
-                }
-            }
-        }
-
 
         /// <summary>
         /// Adjusts the player's reputation with various factions
         /// </summary>
-        private void AdjustFactionReps()
+        void AdjustFactionReps()
         {
             if (Caster.EntityType != EntityTypes.Player)
             {
                 return;
             }
 
-            AdjustFactionRep((int)FactionFile.FactionIDs.Generic_Temple, -2);
+            AdjustFactionRep((int)FactionFile.FactionIDs.Generic_Temple, -1);
 
             AdjustFactionRep((int)Temple.Divines.Akatosh, -3);
             AdjustFactionRep((int)Temple.Divines.Arkay, -9);
@@ -333,7 +313,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Adjusts the player's reputation with the specified faction
         /// </summary>
-        private void AdjustFactionRep(int factionID, int amount)
+        void AdjustFactionRep(int factionID, int amount)
         {
             PersistentFactionData factions = GameManager.Instance.PlayerEntity.FactionData;
             FactionFile.FactionData factionData = factions.FactionDict[factionID];
@@ -346,20 +326,10 @@ namespace ThePenwickPapers
         /// <summary>
         /// Refund magicka cost of this effect to the caster
         /// </summary>
-        private void RefundSpellCost(EntityEffectManager manager)
+        void RefundSpellCost()
         {
-            if (manager.ReadySpell != null)
-            {
-                foreach (EffectEntry entry in manager.ReadySpell.Settings.Effects)
-                {
-                    if (entry.Key.Equals(Key) && entry.Settings.Equals(Settings))
-                    {
-                        FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
-                        Caster.Entity.IncreaseMagicka(cost.spellPointCost);
-                        break;
-                    }
-                }
-            }
+            FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
+            Caster.Entity.IncreaseMagicka(cost.spellPointCost);
         }
 
 
@@ -367,51 +337,45 @@ namespace ThePenwickPapers
         /// Examines the location the player is looking at and checks if there is an appropriate
         /// human-like vessel available in range.
         /// </summary>
-        private bool TryGetCorpse()
+        bool TryGetCorpse()
         {
-            List<DaggerfallLoot> corpses = new List<DaggerfallLoot>();
+            chosenVessel = null;
 
-            DaggerfallLoot[] lootMarkers = UnityEngine.Object.FindObjectsOfType<DaggerfallLoot>();
-            foreach (DaggerfallLoot loot in lootMarkers)
+            //get all nearby loot, in range of 3 meters
+            List<DaggerfallLoot> nearbyLoot = Utility.GetNearbyLoot(caster.transform.position, 3);
+
+            foreach (DaggerfallLoot corpse in nearbyLoot)
             {
-                if (Vector3.Distance(Caster.transform.position, loot.transform.position) < 3)
+                if (CanReanimate(corpse))
                 {
-                    if (CanReanimate(loot))
+                    //must be near enough and looking in the direction of the corpse
+                    Vector3 casterXZ = Vector3.ProjectOnPlane(caster.transform.position, Vector3.up);
+                    Vector3 targetXZ = Vector3.ProjectOnPlane(corpse.transform.position, Vector3.up);
+                    Vector3 direction = targetXZ - casterXZ;
+                    if (Vector3.Angle(caster.transform.forward, direction) < 25)
                     {
-                        corpses.Add(loot);
+                        chosenVessel = corpse;
+                        return true;
                     }
                 }
             }
 
-            foreach (DaggerfallLoot corpse in corpses)
-            {
-                Vector3 casterXZ = Vector3.ProjectOnPlane(caster.transform.position, Vector3.up);
-                Vector3 targetXZ = Vector3.ProjectOnPlane(corpse.transform.position, Vector3.up);
-                Vector3 direction = targetXZ - casterXZ;
-                if (Vector3.Angle(Caster.transform.forward, direction) < 25)
-                {
-                    chosenVessel = corpse;
-                    return true;
-                }
-            }
-
-            chosenVessel = null;
             return false;
         }
 
 
-        private static readonly MobileTypes[] ViableMonsters =
+        static readonly MobileTypes[] ViableMonsters =
         {
             MobileTypes.Knight_CityWatch, MobileTypes.Lich, MobileTypes.AncientLich, MobileTypes.Mummy,
             MobileTypes.SkeletalWarrior, MobileTypes.Vampire, MobileTypes.VampireAncient, MobileTypes.Zombie
         };
 
         /// <summary>
-        /// Determines if the specied corpse can be reanimated.
-        /// Possible corpses include the human enemy classes as well as skeletons, vampires, zombies, lichs,
+        /// Determines if the specified corpse can be reanimated.
+        /// Possible corpses include the human enemy classes as well as skeletons, vampires, zombies, lichen,
         /// mummies, and city watchmen.
         /// </summary>
-        private bool CanReanimate(DaggerfallLoot corpse)
+        bool CanReanimate(DaggerfallLoot corpse)
         {
             if (corpse.isEnemyClass)
             {
@@ -435,7 +399,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Begins the summoning animation and creates an undead creature corresponding to the selected corpse.
         /// </summary>
-        private GameObject Summon(MobileTypes soulType)
+        GameObject Summon(MobileTypes soulType)
         {
             string displayName = string.Format("Penwick Summoned[{0}]", chosenVessel.entityName);
 
@@ -473,10 +437,7 @@ namespace ThePenwickPapers
             SetupDemoEnemy setupEnemy = go.GetComponent<SetupDemoEnemy>();
 
             // Configure summons
-            soulChanceMod = GetSoulValue(soulType); //stronger souls are harder to control
-            bool allied = Caster.EntityType == EntityTypes.Player && RollChance();
-
-            setupEnemy.ApplyEnemySettings(minionType, MobileReactions.Hostile, MobileGender.Unspecified, 0, allied);
+            setupEnemy.ApplyEnemySettings(minionType, MobileReactions.Hostile, MobileGender.Unspecified, 0, false);
             setupEnemy.AlignToGround();
 
             //additional magnitude-related adjustments
@@ -514,8 +475,10 @@ namespace ThePenwickPapers
         /// <summary>
         /// Sets the health for the new undead minion.
         /// </summary>
-        private void AdjustUndeadMinion(GameObject minion, MobileTypes soulType)
+        void AdjustUndeadMinion(GameObject minion, MobileTypes soulType)
         {
+            DaggerfallEntityBehaviour behaviour = minion.GetComponent<DaggerfallEntityBehaviour>();
+            EnemyEntity entity = behaviour.Entity as EnemyEntity;
 
             MobileUnit mobileUnit = minion.GetComponentInChildren<MobileUnit>();
 
@@ -535,7 +498,7 @@ namespace ThePenwickPapers
             }
             else if (mobileEnemy.ID == (int)MobileTypes.Lich || mobileEnemy.ID == (int)MobileTypes.AncientLich)
             {
-                //In vanilla Daggerfall, liches have a wide health range (30-170).
+                //In vanilla Daggerfall, lichen have a wide health range (30-170).
                 mobileEnemy.MinHealth = 40 + GetSoulValue(soulType);
             }
             else
@@ -547,11 +510,6 @@ namespace ThePenwickPapers
 
             mobileEnemy.MaxHealth = mobileEnemy.MinHealth + luckMod;
 
-            if (Caster.EntityType != EntityTypes.Player && ChanceSuccess)
-            {
-                mobileEnemy.Team = Caster.Entity.Team;
-            }
-
             if (chosenVessel.entityName.Equals(TextManager.Instance.GetLocalizedEnemyName((int)MobileTypes.Knight_CityWatch)))
             {
                 //with every fiber of their being...
@@ -559,18 +517,23 @@ namespace ThePenwickPapers
                 sounds.BarkSound = SoundClips.Halt;
             }
 
+            soulChanceMod = GetSoulValue(soulType); //stronger souls are harder to control
+
+            if (RollChance()) //have to manually check chance because soulChanceMod was altered
+            {
+                mobileEnemy.Team = Caster.EntityType == EntityTypes.Player ? MobileTeams.PlayerAlly : Caster.Entity.Team;
+            }
+
             //Record MobileEnemy changes to the MobileUnit
             mobileUnit.SetEnemy(DaggerfallUnity.Instance, mobileEnemy, MobileReactions.Hostile, 0);
 
-            DaggerfallEntityBehaviour behaviour = minion.GetComponent<DaggerfallEntityBehaviour>();
-            EnemyEntity entity = behaviour.Entity as EnemyEntity;
-
             //Since we made changes to MobileEnemy, we have to reset the enemy career
             entity.SetEnemyCareer(mobileEnemy, behaviour.EntityType);
+
         }
 
 
-        private TextFile.Token[] GetSpellMakerDescription()
+        TextFile.Token[] GetSpellMakerDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -582,7 +545,7 @@ namespace ThePenwickPapers
                 Text.ReanimateMagnitude.Get());
         }
 
-        private TextFile.Token[] GetSpellBookDescription()
+        TextFile.Token[] GetSpellBookDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -601,7 +564,7 @@ namespace ThePenwickPapers
 
         //modifed version classicParamsCosts table found in MagicAndEffects/Effects/Enchanting/SoulBound.cs
         // Matches monster IDs 0-42
-        private static short[] soulStrength =
+        static short[] soulStrength =
         {
             0,  //-0,      //Rat 
             2,  //-10,     //Imp 

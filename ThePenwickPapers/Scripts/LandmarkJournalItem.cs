@@ -1,8 +1,7 @@
-// Project:   Landmark Journal for Daggerfall Unity
-// Author:    DunnyOfPenwick
+// Project:     Landmark Journal, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
 // Origin Date: Apr 2021
 
-using System;
 using System.Collections.Generic;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Entity;
@@ -17,7 +16,7 @@ namespace ThePenwickPapers
     {
         public const int LandmarkJournalTemplateIndex = 1770;
 
-        private const int baseValue = 65;    // Base gold value
+        const int baseValue = 105;    // Base gold value
 
 
         public LandmarkJournalItem() : this(baseValue)
@@ -28,16 +27,22 @@ namespace ThePenwickPapers
         public LandmarkJournalItem(int baseValue) : base(ItemGroups.UselessItems2, LandmarkJournalTemplateIndex)
         {
             value = baseValue;
-
-            //subscribe event handler to clear dungeon locations when entering/exiting a dungeon
-            PlayerEnterExit.OnTransitionDungeonInterior += HandleDungeonTransition;
-            PlayerEnterExit.OnTransitionDungeonExterior += HandleDungeonTransition;
         }
 
 
-        void HandleDungeonTransition(PlayerEnterExit.TransitionEventArgs args)
+        public override string ItemName
         {
-            ThePenwickPapersMod.Persistent.DungeonLocations.Clear();
+            get { return Text.LandmarkJournal.Get(); }
+        }
+
+        public override string LongName
+        {
+            get { return ItemName; }
+        }
+
+        public override bool IsEnchanted
+        {
+            get { return false; }
         }
 
 
@@ -46,46 +51,30 @@ namespace ThePenwickPapers
             PlayerEntity playerEntity = GameManager.Instance.PlayerEntity;
 
             if (GameManager.Instance.AreEnemiesNearby(true, false))
-            {
-                DaggerfallUI.MessageBox(Text.EnemiesNear.Get());
-            }
+                Utility.MessageBox(Text.EnemiesNear.Get());
             else if (GameManager.Instance.PlayerEnterExit.IsPlayerSubmerged)
-            {
-                DaggerfallUI.MessageBox(Text.NotWhileSubmerged.Get());
-            }
+                Utility.MessageBox(Text.NotWhileSubmerged.Get());
             else if (!GameManager.Instance.PlayerMotor.IsGrounded)
-            {
-                DaggerfallUI.MessageBox(Text.NotGrounded.Get());
-            }
+                Utility.MessageBox(Text.NotGrounded.Get());
             else if (playerEntity.CarriedWeight > playerEntity.MaxEncumbrance)
-            {
-                DaggerfallUI.MessageBox(Text.YouAreEncumbered.Get());
-            }
+                Utility.MessageBox(Text.YouAreEncumbered.Get());
             else if ((playerEntity.CurrentFatigue / DaggerfallEntity.FatigueMultiplier) < 10)
-            {
-                DaggerfallUI.MessageBox(Text.TooTired.Get());
-            }
+                Utility.MessageBox(Text.TooTired.Get());
             else if (playerEntity.IsParalyzed)
-            {
-                DaggerfallUI.MessageBox(Text.YouAreParalyzed.Get());
-            }
+                Utility.MessageBox(Text.YouAreParalyzed.Get());
             else if (GameManager.Instance.PlayerEnterExit.IsPlayerInsideDungeon)
             {
                 if (AreTeleportersNearby())
-                {
-                    DaggerfallUI.MessageBox(Text.TeleportersNearby.Get());
-                }
+                    Utility.MessageBox(Text.TeleportersNearby.Get());
                 else
-                {
                     ShowLandmarkJournalDialog(ThePenwickPapersMod.Persistent.DungeonLocations);
-                }
             }
             else if (GameManager.Instance.PlayerGPS.IsPlayerInTown(true, true))
             {
-                List<LandmarkLocation> locations;
                 string key = GetLocationIdentifier();
 
-                if (!ThePenwickPapersMod.Persistent.Towns.TryGetValue(key, out locations))
+                //If an entry for this town doesn't exist yet, then create it
+                if (!ThePenwickPapersMod.Persistent.Towns.TryGetValue(key, out List<LandmarkLocation> locations))
                 {
                     locations = new List<LandmarkLocation>();
                     ThePenwickPapersMod.Persistent.Towns.Add(key, locations);
@@ -96,7 +85,7 @@ namespace ThePenwickPapers
             }
             else
             {
-                DaggerfallUI.MessageBox(Text.NotInDungeonOrTown.Get());
+                Utility.MessageBox(Text.NotInDungeonOrTown.Get());
             }
 
 
@@ -111,12 +100,6 @@ namespace ThePenwickPapers
 
 
 
-        public override bool IsEnchanted
-        {
-            get { return false; }
-        }
-
-
         public override ItemData_v1 GetSaveData()
         {
             ItemData_v1 data = base.GetSaveData();
@@ -125,17 +108,18 @@ namespace ThePenwickPapers
         }
 
 
-        //check if dungeon teleporter exits are nearby
-        private bool AreTeleportersNearby()
+
+        /// <summary>
+        /// Check if activated dungeon teleporter exits are nearby.
+        /// </summary>
+        bool AreTeleportersNearby()
         {
             Dictionary<string, Automap.AutomapDungeonState> automapState = Automap.instance.GetState();
 
             string locationIdentifier = GetLocationIdentifier();
 
-            Automap.AutomapDungeonState dungeonState;
-
             //get state of this specific dungeon
-            if (automapState.TryGetValue(locationIdentifier, out dungeonState))
+            if (automapState.TryGetValue(locationIdentifier, out Automap.AutomapDungeonState dungeonState))
             {
                 Dictionary<string, Automap.TeleporterConnection> teleporters = dungeonState.dictTeleporterConnections;
 
@@ -144,16 +128,18 @@ namespace ThePenwickPapers
                 foreach (KeyValuePair<string, Automap.TeleporterConnection> kvp in teleporters)
                 {
                     if (GameManager.Instance.PlayerMotor.DistanceToPlayer(kvp.Value.teleporterExit.position) < maxProximity)
-                    {
                         return true;
-                    }
                 }
             }
+
             return false;
         }
 
 
-        private void ShowLandmarkJournalDialog(List<LandmarkLocation> locations)
+        /// <summary>
+        /// Closes current window (if any), then creates and shows the dialog window
+        /// </summary>
+        void ShowLandmarkJournalDialog(List<LandmarkLocation> locations)
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
 
@@ -163,13 +149,19 @@ namespace ThePenwickPapers
             DaggerfallUI.Instance.UserInterfaceManager.PushWindow(landmarkJournalDialog);
         }
 
-        private string GetLocationIdentifier()
+
+        /// <summary>
+        /// Creates a string location identifier using current region name and location name
+        /// </summary>
+        string GetLocationIdentifier()
         {
             DFLocation dfLocation = GameManager.Instance.PlayerGPS.CurrentLocation;
             return string.Format("{0}/{1}", dfLocation.RegionName, dfLocation.Name);
         }
 
 
-    }
-}
+    } //class LandmarkJournalItem
+
+
+} //namespace
 

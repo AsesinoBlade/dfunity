@@ -16,18 +16,18 @@ using DaggerfallWorkshop.Utility;
 namespace ThePenwickPapers
 {
 
-
     public class WindWalk : IncumbentEffect
     {
-        private static readonly string effectKey = "Wind-Walk";
-        private static GameObject windAudioObject;
-        private static bool resuming;
+        public const string effectKey = "Wind-Walk";
 
-        private float originalLevitateSpeed;
-        private float spellMagnitude;
-        private Vector3 lastPlayerPosition;
-        private Vector3 velocity;
-        private int exitLocationCountdown = 0;
+        static GameObject windAudioObject;
+        static bool resuming;
+
+        float originalLevitateSpeed;
+        float spellMagnitude;
+        Vector3 lastPlayerPosition;
+        Vector3 velocity;
+        int exitLocationCountdown = 0;
 
 
         public override string GroupName => Text.WindWalkGroupName.Get();
@@ -38,7 +38,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// This gets called on certain events, such as game load and player death.
         /// It verifies that any looping audio object is destroyed.
-        /// Also resets the player's levitate move speed to the standard value.
+        /// Also verifies the player's levitate move speed is set to the standard value.
         /// </summary>
         public static void Reset()
         {
@@ -47,7 +47,7 @@ namespace ThePenwickPapers
 
             //Make sure the player levitate move speed is the correct standard value
             LevitateMotor levitator = GameManager.Instance.PlayerObject.GetComponent<LevitateMotor>();
-            levitator.LevitateMoveSpeed = 4.0f;
+            levitator.LevitateMoveSpeed = 4.0f; //standard levitate move speed defined in LevitateMotor
         }
 
 
@@ -125,6 +125,7 @@ namespace ThePenwickPapers
                 //There is no wind to walk indoors
                 levitateMotor.IsLevitating = false;
                 velocity = Vector3.zero;
+                exitLocationCountdown = 3;
                 return;
             }
 
@@ -166,8 +167,7 @@ namespace ThePenwickPapers
                 acceleration += Vector3.down;
 
             //Altitude limiter
-            RaycastHit hitInfo;
-            Physics.Raycast(controller.transform.position, Vector3.down, out hitInfo);
+            Physics.Raycast(controller.transform.position, Vector3.down, out RaycastHit hitInfo);
             float altitude = hitInfo.distance;
             if (acceleration.y > 1)
                 acceleration.y *= 1 - altitude / 200;
@@ -227,16 +227,10 @@ namespace ThePenwickPapers
         }
 
 
-        public void SetExitLocationCountdown()
-        {
-            exitLocationCountdown = 3;
-        }
-
-
         /// <summary>
         /// Starts the levitation effect, and creates a looping audio source to handle wind noise.
         /// </summary>
-        private void StartFlying()
+        void StartFlying()
         {
             if (!windAudioObject) //check if WindWalk already active
             {
@@ -273,18 +267,21 @@ namespace ThePenwickPapers
         /// Check if player collided with any building, people, or creatures while wind-walking.
         /// Apply any resulting damage to the affected parties and contact their insurance agents.
         /// </summary>
-        private void CheckCollision()
+        void CheckCollision()
         {
             CharacterController controller = Caster.GetComponent<CharacterController>();
 
             Vector3 top = controller.transform.position;
             top.y += controller.height / 2f;
+
             Vector3 bottom = controller.transform.position;
             bottom.y -= controller.height / 2f;
-            RaycastHit hitInfo;
+
             int layerMask = ~(1 << controller.gameObject.layer);
+
             float distance = velocity.magnitude;
-            if (!Physics.CapsuleCast(top, bottom, controller.radius, velocity.normalized, out hitInfo, distance, layerMask))
+
+            if (!Physics.CapsuleCast(top, bottom, controller.radius, velocity.normalized, out RaycastHit hitInfo, distance, layerMask))
                 return;
 
             Vector3 normal = hitInfo.normal;
@@ -340,24 +337,14 @@ namespace ThePenwickPapers
         /// <summary>
         /// Refunds to caster the magicka expended on this effect.
         /// </summary>
-        private void RefundSpellCost()
+        void RefundSpellCost()
         {
-            if (manager.ReadySpell != null)
-            {
-                foreach (EffectEntry entry in manager.ReadySpell.Settings.Effects)
-                {
-                    if (entry.Key.Equals(Key) && entry.Settings.Equals(Settings))
-                    {
-                        FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
-                        Caster.Entity.IncreaseMagicka(cost.spellPointCost);
-                        break;
-                    }
-                }
-            }
+            FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
+            Caster.Entity.IncreaseMagicka(cost.spellPointCost);
         }
 
 
-        private TextFile.Token[] GetSpellMakerDescription()
+        TextFile.Token[] GetSpellMakerDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -367,7 +354,7 @@ namespace ThePenwickPapers
                 Text.WindWalkSpellMakerMagnitude.Get());
         }
 
-        private TextFile.Token[] GetSpellBookDescription()
+        TextFile.Token[] GetSpellBookDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -380,7 +367,9 @@ namespace ThePenwickPapers
         }
 
 
+
     } //class WindWalk
+
 
 
 } //namespace

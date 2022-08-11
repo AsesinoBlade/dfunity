@@ -2,6 +2,10 @@
 // Author:      DunnyOfPenwick
 // Origin Date: Feb 2022
 
+using System.Collections;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine;
 using DaggerfallConnect;
 using DaggerfallConnect.FallExe;
 using DaggerfallWorkshop;
@@ -11,105 +15,107 @@ using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallWorkshop.Game.MagicAndEffects.MagicEffects;
 using DaggerfallWorkshop.Game.UserInterface;
-using DaggerfallWorkshop.Game.UserInterfaceWindows;
 using DaggerfallWorkshop.Game.Utility;
 using DaggerfallWorkshop.Utility;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using UnityEngine;
 
 
 
 namespace ThePenwickPapers
 {
 
-    public class Trapping
+    public static class Trapping
     {
-        private class TrapType
+        class TrapType
         {
             public int Index;
             public Text Name;
             public int RequiredSkill;
             public int Reliability;
             public SoundClips[] Sounds;
+            public string ShortIngredientList;
             public int[] Ingredients;
 
-            public TrapType(int index, Text name, int requiredSkill, int reliability, SoundClips[] sounds, int[] ingredients)
+            public TrapType(int index, Text name, int requiredSkill, int reliability, SoundClips[] sounds, string shortIngr, int[] ingredients)
             {
                 Index = index;
                 Name = name;
                 RequiredSkill = requiredSkill;
                 Reliability = reliability;
                 Sounds = sounds;
+                ShortIngredientList = shortIngr;
                 Ingredients = ingredients;
             }
         }
 
-        private static readonly List<TrapType> trapTypes = new List<TrapType>()
+        static readonly List<TrapType> trapTypes = new List<TrapType>()
         {
-            new TrapType(0, Text.Snaring, 18, 70,
+            new TrapType(0, Text.LunaStick, 15, 100,
+                new SoundClips[] { SoundClips.AmbientWaterBubbles, SoundClips.ActivateGears},
+                "",
+                new int[] {(int)CreatureIngredients1.Ectoplasm, (int)PlantIngredients1.Twigs}),
+
+            new TrapType(1, Text.Snaring, 18, 70,
                 new SoundClips[] {SoundClips.EquipLeather, SoundClips.EquipLeather},
+                "",
                 new int[] {(int)PlantIngredients1.Root_tendrils}),
 
-            new TrapType(1, Text.Snaring, 28, 85,
+            new TrapType(2, Text.Snaring, 29, 85,
                 new SoundClips[] {SoundClips.EquipClothing, SoundClips.EquipClothing},
+                "",
                 new int[] {(int)CreatureIngredients2.Mummy_wrappings}),
 
-            new TrapType(2, Text.Venomous, 22, 75,
+            new TrapType(3, Text.Venomous, 22, 70,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SnakeVenom,Bamboo)",
                 new int[] {(int)CreatureIngredients1.Snake_venom, (int)PlantIngredients2.Bamboo}),
 
-            new TrapType(3, Text.Venomous, 31, 80,
+            new TrapType(4, Text.Venomous, 31, 80,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SnakeVenom,MdTooth)",
                 new int[] {(int)CreatureIngredients1.Snake_venom, (int)MiscellaneousIngredients1.Medium_tooth}),
 
-            new TrapType(4, Text.Venomous, 35, 90,
+            new TrapType(5, Text.Venomous, 37, 90,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SnakeVenom,BgTooth)",
                 new int[] {(int)CreatureIngredients1.Snake_venom, (int)MiscellaneousIngredients1.Big_tooth}),
 
-            new TrapType(5, Text.Paralyzing, 24, 70,
-                new SoundClips[] {SoundClips.EquipLeather, SoundClips.EquipLeather, SoundClips.EquipLeather},
-                new int[] {(int)CreatureIngredients2.Small_scorpion_stinger, (int)PlantIngredients1.Root_tendrils}),
-
-            new TrapType(6, Text.Paralyzing, 39, 80,
-                new SoundClips[] {SoundClips.EquipLeather, SoundClips.EquipClothing, SoundClips.EquipLeather},
-                new int[] {(int)CreatureIngredients2.Small_scorpion_stinger, (int)CreatureIngredients2.Mummy_wrappings}),
-
-            new TrapType(7, Text.Paralyzing, 27, 75,
+            new TrapType(6, Text.Paralyzing, 26, 70,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SpdrVenom,Bamboo)",
                 new int[] {(int)CreatureIngredients1.Spider_venom, (int)PlantIngredients2.Bamboo}),
 
-            new TrapType(8, Text.Paralyzing, 33, 85,
+            new TrapType(7, Text.Paralyzing, 33, 80,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SpdrVenom,MdTooth)",
                 new int[] {(int)CreatureIngredients1.Spider_venom, (int)MiscellaneousIngredients1.Medium_tooth}),
 
-            new TrapType(9, Text.Paralyzing, 41, 95,
+            new TrapType(8, Text.Paralyzing, 40, 95,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
+                " (SpdrVenom,BgTooth)",
                 new int[] {(int)CreatureIngredients1.Spider_venom, (int)MiscellaneousIngredients1.Big_tooth}),
 
-            new TrapType(10, Text.Paralyzing, 34, 80,
+            new TrapType(9, Text.Paralyzing, 35, 80,
                 new SoundClips[] {SoundClips.EquipLeather, SoundClips.EquipLeather},
+                "(GtScorpStngr,RtTndrls)",
                 new int[] {(int)CreatureIngredients2.Giant_scorpion_stinger, (int)PlantIngredients1.Root_tendrils}),
 
-            new TrapType(11, Text.Paralyzing, 45, 95,
+            new TrapType(10, Text.Paralyzing, 43, 90,
                 new SoundClips[] {SoundClips.EquipLeather, SoundClips.EquipClothing, SoundClips.EquipLeather},
+                "(GtScorpStngr,MummyWr)",
                 new int[] {(int)CreatureIngredients2.Giant_scorpion_stinger, (int)CreatureIngredients2.Mummy_wrappings}),
 
-            new TrapType(12, Text.FlamingBomb, 37, 90,
+            new TrapType(11, Text.FlamingBomb, 37, 90,
                 new SoundClips[] {SoundClips.ActivateGears, SoundClips.AmbientWaterBubbles},
-                new int[] {(int)UselessItems2.Oil, (int)PlantIngredients2.Root_bulb, (int)MetalIngredients.Sulphur}),
+                " (Oil,RtBulb,Sulph)",
+                new int[] {(int)UselessItems2.Oil, (int)PlantIngredients2.Root_bulb, (int)MetalIngredients.Sulphur})
 
-            new TrapType(13, Text.LunaStick, 15, 100,
-                new SoundClips[] { SoundClips.AmbientWaterBubbles, SoundClips.ActivateGears},
-                new int[] {(int)CreatureIngredients1.Ectoplasm, (int)PlantIngredients1.Twigs})
         };
 
-        private const string trapObjectNamePrefix = "Menacing Trap";
+        const string trapObjectNamePrefix = "Menacing Trap";
 
-        private static DaggerfallListPickerWindow trapPicker;
-        private static bool layingTrap;
-        private static Vector3 trapLocation;
+        static ListPickerWindow trapPicker;
+        static bool layingTrap;
+        static Vector3 trapLocation;
 
 
         /// <summary>
@@ -183,20 +189,17 @@ namespace ThePenwickPapers
         /// <summary>
         /// Shows the listbox of available traps that the PC has the skill to set.
         /// </summary>
-        private static void ShowTrapPicker()
+        static void ShowTrapPicker()
         {
             IUserInterfaceManager uiManager = DaggerfallUI.UIManager;
             ItemCollection playerItems = GameManager.Instance.PlayerEntity.Items;
 
-            int lockpicking = GameManager.Instance.PlayerEntity.Skills.GetLiveSkillValue(DFCareer.Skills.Lockpicking);
+            int lockpicking = GameManager.Instance.PlayerEntity.Skills.GetPermanentSkillValue(DFCareer.Skills.Lockpicking);
 
-            trapPicker = new DaggerfallListPickerWindow(uiManager, uiManager.TopWindow);
+            trapPicker = new ListPickerWindow(uiManager, uiManager.TopWindow);
             trapPicker.OnItemPicked += TrapPicker_OnItemPicked;
-            trapPicker.OnCancel += TrapPicker_OnCancel;
 
             ListBox listBox = trapPicker.ListBox;
-            ListBox.ListItem item;
-            int count = 0;
             listBox.SelectNone();
 
             foreach (TrapType trap in trapTypes)
@@ -204,24 +207,30 @@ namespace ThePenwickPapers
                 if (trap.RequiredSkill > lockpicking)
                     continue;
 
-                ++count;
+                StringBuilder sbuff = new StringBuilder();
+                sbuff.Append(trap.Name.Get());
 
-                StringBuilder str = new StringBuilder();
-                str.Append(trap.Name.Get());
-                str.Append(" (");
-                for (int i = 0; i < trap.Ingredients.Length; ++i)
+                if (trap.ShortIngredientList.Length == 0 || DaggerfallUnity.Settings.SDFFontRendering == true)
                 {
-                    if (i > 0)
-                        str.Append(", ");
+                    sbuff.Append(" (");
+                    for (int i = 0; i < trap.Ingredients.Length; ++i)
+                    {
+                        if (i > 0)
+                            sbuff.Append(", ");
 
-                    ItemTemplate template = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(trap.Ingredients[i]);
-                    str.Append(template.name);
+                        ItemTemplate template = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(trap.Ingredients[i]);
+                        sbuff.Append(template.name);
+                    }
+                    sbuff.Append(")");
                 }
-                str.Append(")");
+                else
+                {
+                    //use alternate shortened ingredient list when using the pixelated font
+                    sbuff.Append(trap.ShortIngredientList);
+                }
 
-                listBox.AddItem(str.ToString(), out item, -1, trap);
 
-                item.tag = trap;
+                listBox.AddItem(sbuff.ToString(), out ListBox.ListItem item, -1, trap);
 
                 if (!HasIngredients(trap, playerItems))
                 {
@@ -230,7 +239,7 @@ namespace ThePenwickPapers
                 }
             }
 
-            if (count == 0)
+            if (listBox.Count == 0)
             {
                 string skillName = DaggerfallUnity.Instance.TextProvider.GetSkillName(DFCareer.Skills.Lockpicking);
                 Utility.AddHUDText(Text.TrapsUnknown.Get(skillName));
@@ -241,10 +250,11 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Checks if the PC has all the items needed to set the specified trap.
         /// </summary>
-        private static bool HasIngredients(TrapType trap, ItemCollection items)
+        static bool HasIngredients(TrapType trap, ItemCollection items)
         {
             foreach (int index in trap.Ingredients)
             {
@@ -266,17 +276,14 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Triggered when an item is selected in the trap list box.
         /// Starts the trap laying coroutine.
         /// </summary>
-        private static void TrapPicker_OnItemPicked(int index, string itemText)
+        static void TrapPicker_OnItemPicked(int index, string itemText)
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
-
-            //The trap picker window prevented 'Action Complete' from being seen, so we must
-            //manually stop swallowing actions
-            ThePenwickPapersMod.StopSwallowingActions();
 
             ItemCollection playerItems = GameManager.Instance.PlayerEntity.Items;
 
@@ -294,21 +301,11 @@ namespace ThePenwickPapers
         }
 
 
-        /// <summary>
-        /// Triggered when the Escape key is pressed to cancel the list picker window
-        /// </summary>
-        private static void TrapPicker_OnCancel(DaggerfallPopupWindow sender)
-        {
-            //The trap picker window prevented 'Action Complete' from being seen, so we must
-            //manually stop swallowing actions
-            ThePenwickPapersMod.StopSwallowingActions();
-        }
-
 
         /// <summary>
         /// Coroutine that plays the trap-making sounds and calls CreateTrapObject.
         /// </summary>
-        private static IEnumerator LayTrapCoroutine(TrapType trap)
+        static IEnumerator LayTrapCoroutine(TrapType trap)
         {
             layingTrap = true;
 
@@ -361,10 +358,11 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Creates the trap as a loot container and initializes it.
         /// </summary>
-        private static void CreateTrapObject(TrapType trapType)
+        static void CreateTrapObject(TrapType trapType)
         {
             // Create unique LoadID for save system
             ulong loadID = DaggerfallUnity.NextUID;
@@ -390,11 +388,12 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Adds the trap ingredients to the trap loot marker.
         /// The player can later retrieve the items from an untriggered trap, thereby deactivating it.
         /// </summary>
-        private static void TransferIngredients(TrapType trapType, DaggerfallLoot trapMarker)
+        static void TransferIngredients(TrapType trapType, DaggerfallLoot trapMarker)
         {
             foreach (int templateIndex in trapType.Ingredients)
             {
@@ -404,11 +403,12 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Removes the ingredient of the specified template index from PC inventory and returns it.
         /// Returns null if the ingredient is not in inventory.
         /// </summary>
-        private static DaggerfallUnityItem RetrieveIngredient(int templateIndex)
+        static DaggerfallUnityItem RetrieveIngredient(int templateIndex)
         {
             ItemCollection playerItems = GameManager.Instance.PlayerEntity.Items;
 
@@ -418,8 +418,11 @@ namespace ThePenwickPapers
                 if (!item.IsQuestItem && item.IsOfTemplate(templateIndex))
                 {
                     playerItems.RemoveOne(item);
-                    DaggerfallUnityItem newItem = new DaggerfallUnityItem(item);
-                    newItem.stackCount = 1;
+                    //creates new item to separate from the item in inventory (which might be a stack)
+                    DaggerfallUnityItem newItem = new DaggerfallUnityItem(item)
+                    {
+                        stackCount = 1
+                    };
                     return newItem;
                 }
             }
@@ -428,13 +431,15 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Adds a collider trigger to the trap to detect when something hits it.
         /// </summary>
-        private static void SetTrigger(DaggerfallLoot trapMarker)
+        static void SetTrigger(DaggerfallLoot trapMarker)
         {
             trapMarker.gameObject.AddComponent<TrapTriggerDetection>();
         }
+
 
 
         /// <summary>
@@ -442,7 +447,7 @@ namespace ThePenwickPapers
         /// Checks if the trap was successfully triggered.  If so, calls ShowTriggerAnimation() and
         /// ApplyTrapEffects().
         /// </summary>
-        private static void TriggerTrap(DaggerfallLoot trapMarker, TrapType trapType, DaggerfallEntityBehaviour victim)
+        static void TriggerTrap(DaggerfallLoot trapMarker, TrapType trapType, DaggerfallEntityBehaviour victim)
         {
             if (!HasIngredients(trapType, trapMarker.Items))
             {
@@ -477,11 +482,12 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Called after trap is triggered.
         /// Creates on-shot billboard for effect animation, then destroys the trap.
         /// </summary>
-        private static void ShowTriggerAnimation(DaggerfallLoot trapMarker, TrapType trapType)
+        static void ShowTriggerAnimation(DaggerfallLoot trapMarker, TrapType trapType)
         {
             int archive;
             int record;
@@ -528,10 +534,11 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Applies trap effects by creating an effect bundle and applying it to the victim.
         /// </summary>
-        private static void ApplyTrapEffects(TrapType trapType, DaggerfallEntityBehaviour victim)
+        static void ApplyTrapEffects(TrapType trapType, DaggerfallEntityBehaviour victim)
         {
             float lockpicking = GameManager.Instance.PlayerEntity.Skills.GetLiveSkillValue(DFCareer.Skills.Lockpicking);
 
@@ -559,10 +566,11 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Initializes the EffectSettings and assigns the bundle.
         /// </summary>
-        private static void ApplyEffectBundle(DaggerfallEntityBehaviour victim, string effectKey, ElementTypes element, float potency)
+        static void ApplyEffectBundle(DaggerfallEntityBehaviour victim, string effectKey, ElementTypes element, float potency)
         {
             EntityEffectManager manager = victim.GetComponent<EntityEffectManager>();
 
@@ -575,10 +583,10 @@ namespace ThePenwickPapers
             settings.ChanceBase = 100;
 
             //trap damage is scaled by level
-            settings.MagnitudeBaseMin = (int)(5 * potency);
-            settings.MagnitudeBaseMax = (int)(10 * potency);
-            settings.MagnitudePlusMin = (int)(3 * potency);
-            settings.MagnitudePlusMax = (int)(9 * potency);
+            settings.MagnitudeBaseMin = (int)(6 * potency);
+            settings.MagnitudeBaseMax = (int)(12 * potency);
+            settings.MagnitudePlusMin = (int)(4 * potency);
+            settings.MagnitudePlusMax = (int)(8 * potency);
             settings.MagnitudePerLevel = 1;
 
             EntityEffectBundle bundle = manager.CreateSpellBundle(effectKey, element, settings);
@@ -590,13 +598,14 @@ namespace ThePenwickPapers
         }
 
 
+
         /// <summary>
         /// Coroutine activated on triggered snares that pulls the victim backward if it moves
         /// too far from the trap location.
         /// The coroutine ends after a length of time determined by trap potency and victim strength.
         /// PCs are not affected by snares.
         /// </summary>
-        private static IEnumerator Snare(DaggerfallEntityBehaviour victim, float potency)
+        static IEnumerator Snare(DaggerfallEntityBehaviour victim, float potency)
         {
             if (victim.EntityType == EntityTypes.Player)
                 yield break;
@@ -625,12 +634,9 @@ namespace ThePenwickPapers
         }
 
 
-        public class TrapTriggerDetection : MonoBehaviour
-        {
-            void Start()
-            {
-            }
 
+        class TrapTriggerDetection : MonoBehaviour
+        {
             void OnTriggerEnter(Collider other)
             {
                 DaggerfallLoot trapMarker = GetComponent<DaggerfallLoot>();
@@ -650,7 +656,7 @@ namespace ThePenwickPapers
 
                 if (victim && triggeredTrapType != null)
                 {
-                    Trapping.TriggerTrap(trapMarker, triggeredTrapType, victim);
+                    TriggerTrap(trapMarker, triggeredTrapType, victim);
                 }
 
             }
@@ -665,7 +671,7 @@ namespace ThePenwickPapers
 
     public class LunaStick : IncumbentEffect
     {
-        private GameObject lunaStick;
+        GameObject lunaStick;
 
         public const string EffectKey = "Luna-Stick";
 
@@ -740,14 +746,13 @@ namespace ThePenwickPapers
         }
 
 
-        private void Init()
+        /// <summary>
+        /// Sets spell icon, then creates lunaStick game object and sets its properties
+        /// </summary>
+        void Init()
         {
-            ParentBundle.icon.index = 62; //crescent moon
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
-            {
-                ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                ParentBundle.icon.index = 3; //green glow ball
-            }
+            //set icon to either crescent moon or DREAM green glow ball
+            Utility.SetIcon(ParentBundle, 62, 3);
 
             //create light source
             lunaStick = new GameObject(Text.LunaStick.Get());
@@ -760,6 +765,9 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Returns duration value based on lockpicking skill
+        /// </summary>
         private int CalculateDuration()
         {
             int trapping = Caster == null ? 25 : Caster.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Lockpicking);

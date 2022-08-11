@@ -1,6 +1,6 @@
-// Project:   Illusory Decoy for Daggerfall Unity
-// Author:    DunnyOfPenwick
-// Origin Date:  June 2021
+// Project:     Illusory Decoy, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
+// Origin Date: June 2021
 
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +14,7 @@ namespace ThePenwickPapers
 {
     public static class IllusoryDecoyCatalog
     {
-        public static readonly Dictionary<Skills, MobileTypes[]> DecoyTypes = new Dictionary<Skills, MobileTypes[]>()
+        static readonly Dictionary<Skills, MobileTypes[]> DecoyTypes = new Dictionary<Skills, MobileTypes[]>()
         {
             { Skills.Centaurian, new MobileTypes[] {Centaur} },
             { Skills.Daedric, new MobileTypes[] {Daedroth, FireDaedra, DaedraLord, DaedraSeducer, FrostDaedra} },
@@ -29,7 +29,7 @@ namespace ThePenwickPapers
             { Skills.Streetwise, new MobileTypes[] {Thief, Assassin, Rogue, Burglar} },
         };
 
-        public static readonly Skills[] Flyers = { Skills.Dragonish, Skills.Impish, Skills.Harpy };
+        static readonly Skills[] Flyers = { Skills.Dragonish, Skills.Impish, Skills.Harpy };
 
 
         /// <summary>
@@ -66,21 +66,31 @@ namespace ThePenwickPapers
 
 
         /// <summary>
+        /// Returns distance above ground of provided position, maximum of 20.
+        /// </summary>
+        /// <returns>Altitude, maximum of 20</returns>
+        public static float GetAltitude(Vector3 position)
+        {
+            const float maxDistance = 20f;
+
+            if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, maxDistance))
+                return hit.distance;
+
+            return maxDistance;
+        }
+
+
+        /// <summary>
         /// Determines decoy types to get based on caster language skills.
         /// </summary>
         /// <returns>MobileType[] array of selected units</returns>
-        public static MobileTypes[] GetDecoyTypes(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster)
+        static MobileTypes[] GetDecoyTypes(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster)
         {
             Skills bestish = GetBestishSkill(caster, DecoyTypes.Keys);
-            MobileTypes[] availableTypes;
-            if (DecoyTypes.TryGetValue(bestish, out availableTypes))
-            {
+            if (DecoyTypes.TryGetValue(bestish, out MobileTypes[] availableTypes))
                 return availableTypes;
-            }
             else
-            {
                 return new MobileTypes[] { };
-            }
         }
 
 
@@ -88,7 +98,7 @@ namespace ThePenwickPapers
         /// Determines the best flying decoy type to get based on caster language skills.
         /// </summary>
         /// <returns>MobileType of selected unit</returns>
-        public static MobileTypes GetFlyingDecoyType(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster)
+        static MobileTypes GetFlyingDecoyType(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster)
         {
             switch (GetBestishSkill(caster, Flyers))
             {
@@ -106,12 +116,10 @@ namespace ThePenwickPapers
         /// <summary>
         /// Selects one of the highest skills from a collection of skills, somewhat nebulous.
         /// </summary>
-        public static Skills GetBestishSkill(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster, ICollection<Skills> skills)
+        static Skills GetBestishSkill(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster, ICollection<Skills> skills)
         {
             if (skills.Count == 0)
-            {
                 return Skills.None;
-            }
 
             List<Skills> possible = GetBestSkills(caster, skills);
 
@@ -123,12 +131,10 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets the caster's best skills (plural) from a collection of skills
         /// </summary>
-        public static List<Skills> GetBestSkills(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster, ICollection<Skills> skills)
+        static List<Skills> GetBestSkills(DaggerfallWorkshop.Game.Entity.DaggerfallEntityBehaviour caster, ICollection<Skills> skills)
         {
             if (skills.Count == 0)
-            {
                 return new List<Skills>();
-            }
 
             IOrderedEnumerable<Skills> sortedSkills = skills.OrderByDescending(sk => caster.Entity.Skills.GetLiveSkillValue(sk));
 
@@ -141,38 +147,16 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Returns distance above ground of provided position, maximum of 20.
-        /// </summary>
-        /// <returns>Altitude, maximum of 20</returns>
-        public static float GetAltitude(Vector3 position)
-        {
-            const float maxDistance = 20f;
-
-            RaycastHit hit;
-            if (Physics.Raycast(position, Vector3.down, out hit, maxDistance))
-            {
-                return hit.distance;
-            }
-
-            return maxDistance;
-        }
-
-
-        /// <summary>
         /// Does altitude checks along path to see if a flying decoy is required.
         /// </summary>
         /// <returns>true if a flying unit should be used</returns>
-        private static bool NeedsFlyingDecoy(Vector3 startLocation, Vector3 destination)
+        static bool NeedsFlyingDecoy(Vector3 startLocation, Vector3 destination)
         {
             if (GameManager.Instance.PlayerEnterExit.IsPlayerSubmerged)
-            {
                 return false;
-            }
 
             if (GetAltitude(startLocation) > 2.3f || GetAltitude(destination) > 3.3f)
-            {
                 return true;
-            }
 
             //shift upward closer to eye-height to reduce clipping through stairs and what-not
             startLocation += Vector3.up;
@@ -184,15 +168,16 @@ namespace ThePenwickPapers
             {
                 Vector3 position = startLocation + offsetDirection * offset;
                 if (GetAltitude(position) > 4.0f)
-                {
                     return true;
-                }
             }
 
             return false;
         }
 
 
+
     } // class IllusoryDecoyCatalog
+
+
 
 } //namespace

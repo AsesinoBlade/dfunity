@@ -11,13 +11,14 @@ namespace ThePenwickPapers
 {
     public class SummoningEgg
     {
-        private readonly DaggerfallEnemy creature;
-        private readonly Texture2D eggTexture;
-        private readonly Color eggColor;
-        private readonly GameObject outerEgg;
-        private readonly GameObject innerEgg;
-        private readonly DaggerfallAudioSource dfAudio;
-        private readonly AudioClip sound;
+        readonly DaggerfallEnemy creature;
+        readonly Texture2D eggTexture;
+        readonly Color eggColor;
+        readonly GameObject outerEgg;
+        readonly GameObject innerEgg;
+        readonly DaggerfallAudioSource dfAudio;
+        readonly AudioClip sound;
+
 
         public SummoningEgg(DaggerfallEnemy creature, Texture2D eggTexture, Color eggColor, AudioClip sound = null)
         {
@@ -38,6 +39,7 @@ namespace ThePenwickPapers
             innerEgg.transform.localPosition = Vector3.zero;
             innerEgg.transform.localScale = new Vector3(0.95f, 0.95f, 0.95f);
         }
+
 
         /// <summary>
         /// Coroutine to animate the summoning process
@@ -99,7 +101,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Create a collider to take up space, preventing other summons from occupying the same area
         /// </summary>
-        private GameObject CreatePlaceholder(Vector2 size)
+        GameObject CreatePlaceholder(Vector2 size)
         {
             GameObject placeHolder = new GameObject();
             placeHolder.transform.parent = creature.transform.parent;
@@ -113,7 +115,10 @@ namespace ThePenwickPapers
 
 
 
-        private GameObject CreateOuterEgg()
+        /// <summary>
+        /// Create partially transparent outer cylinder with egg texture.
+        /// </summary>
+        GameObject CreateOuterEgg()
         {
             GameObject cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             Renderer renderer = cylinder.GetComponent<Renderer>();
@@ -135,7 +140,11 @@ namespace ThePenwickPapers
             return cylinder;
         }
 
-        private GameObject CreateInnerEgg()
+
+        /// <summary>
+        /// Create opaque, colored inner cylinder.
+        /// </summary>
+        GameObject CreateInnerEgg()
         {
             //create an emissive inner sphere to make the egg more visible and add some color
             GameObject cylinder = GameObject.CreatePrimitive(PrimitiveType.Cylinder);

@@ -1,6 +1,6 @@
-// Project:   Create Atronach Mod for Daggerfall Unity
-// Author:    DunnyOfPenwick
-// Origin Date:  June 2021
+// Project:     Create Atronach, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
+// Origin Date: June 2021
 
 using System;
 using System.Collections;
@@ -21,7 +21,7 @@ namespace ThePenwickPapers
 {
     public class CreateAtronach : BaseEntityEffect
     {
-        private static readonly string effectKey = "Create-Atronach";
+        public const string effectKey = "Create-Atronach";
 
         // Variant can be stored internally with any format
         struct VariantProperties
@@ -34,7 +34,7 @@ namespace ThePenwickPapers
             public int itemIndex;
         }
 
-        private readonly VariantProperties[] variants = new VariantProperties[]
+        static readonly VariantProperties[] variants = new VariantProperties[]
         {
             new VariantProperties()
             {
@@ -72,8 +72,8 @@ namespace ThePenwickPapers
 
 
 
-        // Must override Properties to return correct properties for any variant
-        // The currentVariant value is set by magic framework - each variant gets enumerated to its own effect template
+        // Must override Properties to return correct properties for any variant.
+        // The currentVariant value is set by magic framework - each variant gets enumerated to its own effect template.
         public override EffectProperties Properties
         {
             get { return variants[currentVariant].effectProperties; }
@@ -91,9 +91,9 @@ namespace ThePenwickPapers
             properties.DisableReflectiveEnumeration = true;
             properties.SupportChance = true;
             properties.ChanceFunction = ChanceFunction.Custom;
-            properties.ChanceCosts = MakeEffectCosts(12, 60, 150);
+            properties.ChanceCosts = MakeEffectCosts(10, 50, 120);
             properties.SupportMagnitude = true;
-            properties.MagnitudeCosts = MakeEffectCosts(16, 80, 190);
+            properties.MagnitudeCosts = MakeEffectCosts(16, 80, 140);
 
             // Set variant count so framework knows how many to extract
             variantCount = variants.Length;
@@ -123,27 +123,20 @@ namespace ThePenwickPapers
             }
 
             bool success = false;
-            
+
             try
             {
                 if (variants[currentVariant].mobileType == MobileTypes.FireAtronach && GameManager.Instance.PlayerEnterExit.IsPlayerSubmerged)
                 {
                     Utility.AddHUDText(Text.CantCreateFireAtronachSubmerged.Get());
                 }
-                else
+                else if (TryGetSpellComponent(out DaggerfallUnityItem ingredient))
                 {
-                    //requires spell component
-                    DaggerfallUnityItem ingredient;
-
-                    if (TryGetSpellComponent(out ingredient))
+                    if (TryGetSpawnLocation(out Vector3 location))
                     {
-                        Vector3 location;
-                        if (TryGetSpawnLocation(out location))
-                        {
-                            Summon(location);
-                            Caster.Entity.Items.RemoveOne(ingredient);
-                            success = true;
-                        }
+                        Summon(location);
+                        Caster.Entity.Items.RemoveOne(ingredient);
+                        success = true;
                     }
                 }
             }
@@ -155,7 +148,7 @@ namespace ThePenwickPapers
 
             if (!success)
             {
-                RefundSpellCost(manager);
+                RefundSpellCost();
                 End();
             }
         }
@@ -179,7 +172,7 @@ namespace ThePenwickPapers
         /// Checks the caster's inventory for the spell ingredient/component
         /// </summary>
         /// <returns>true if the component was found, false otherwise</returns>
-        private bool TryGetSpellComponent(out DaggerfallUnityItem item)
+        bool TryGetSpellComponent(out DaggerfallUnityItem item)
         {
             VariantProperties variant = variants[currentVariant];
 
@@ -201,30 +194,22 @@ namespace ThePenwickPapers
         /// <summary>
         /// Refund magicka cost of this effect to the caster
         /// </summary>
-        private void RefundSpellCost(EntityEffectManager manager)
+        void RefundSpellCost()
         {
-            if (manager.ReadySpell != null)
-            {
-                foreach (EffectEntry entry in manager.ReadySpell.Settings.Effects)
-                {
-                    if (entry.Key.Equals(Key) && entry.Settings.Equals(Settings))
-                    {
-                        FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
-                        Caster.Entity.IncreaseMagicka(cost.spellPointCost);
-                        break;
-                    }
-                }
-            }
+            FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
+            Caster.Entity.IncreaseMagicka(cost.spellPointCost);
         }
 
-        private static readonly float[] scanDistances = { 2.0f, 3.0f, 1.2f };
-        private static readonly float[] scanDownUpRots = { 45, 30, 0, -30, -45 };
-        private static readonly float[] scanLeftRightRots = { 0, 5, -5, 15, -15, 30, -30, 45, -45 };
+
+
+        static readonly float[] scanDistances = { 2.0f, 3.0f, 1.2f };
+        static readonly float[] scanDownUpRots = { 45, 30, 0, -30, -45 };
+        static readonly float[] scanLeftRightRots = { 0, 5, -5, 15, -15, 30, -30, 45, -45 };
 
         /// <summary>
         /// Scans the area in front of the caster and tries to find a location that can fit a medium-sized creature.
         /// </summary>
-        private bool TryGetSpawnLocation(out Vector3 location)
+        bool TryGetSpawnLocation(out Vector3 location)
         {
             int casterLayerMask = ~(1 << Caster.gameObject.layer);
 
@@ -240,8 +225,7 @@ namespace ThePenwickPapers
 
                         //shouldn't be anything between the caster and spawn point
                         Ray ray = new Ray(Caster.transform.position, direction);
-                        RaycastHit hit; //might be useful for debugging
-                        if (Physics.Raycast(ray, out hit, distance, casterLayerMask))
+                        if (Physics.Raycast(ray, out RaycastHit hit, distance, casterLayerMask))
                         {
                             continue;
                         }
@@ -270,7 +254,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Creates the atronach and begins the summoning animation.
         /// </summary>
-        private void Summon(Vector3 location)
+        void Summon(Vector3 location)
         {
             VariantProperties variant = variants[currentVariant];
 
@@ -285,9 +269,7 @@ namespace ThePenwickPapers
             SetupDemoEnemy setupEnemy = go.GetComponent<SetupDemoEnemy>();
 
             // Configure summons
-            bool allied = ChanceSuccess && Caster.EntityType == EntityTypes.Player;
-
-            setupEnemy.ApplyEnemySettings(variant.mobileType, MobileReactions.Hostile, MobileGender.Unspecified, 0, allied);
+            setupEnemy.ApplyEnemySettings(variant.mobileType, MobileReactions.Hostile, MobileGender.Unspecified, 0, false);
             setupEnemy.AlignToGround();
 
             //additional magnitude-related adjustments
@@ -317,8 +299,11 @@ namespace ThePenwickPapers
         /// <summary>
         /// Adjusts the atronach's health.
         /// </summary>
-        private void AdjustAtronach(GameObject atronach)
+        void AdjustAtronach(GameObject atronach)
         {
+            DaggerfallEntityBehaviour behaviour = atronach.GetComponent<DaggerfallEntityBehaviour>();
+            EnemyEntity entity = behaviour.Entity as EnemyEntity;
+
             MobileUnit mobileUnit = atronach.GetComponentInChildren<MobileUnit>();
 
             MobileEnemy mobileEnemy = mobileUnit.Enemy;
@@ -331,23 +316,20 @@ namespace ThePenwickPapers
             mobileEnemy.MinHealth = 23 + magnitude;
             mobileEnemy.MaxHealth = mobileEnemy.MinHealth + luckBonus;
 
-            if (Caster.EntityType != EntityTypes.Player && ChanceSuccess)
+            if (ChanceSuccess)
             {
-                mobileEnemy.Team = Caster.Entity.Team;
+                mobileEnemy.Team = Caster.EntityType == EntityTypes.Player ? MobileTeams.PlayerAlly : Caster.Entity.Team;
             }
 
             //Record MobileEnemy changes to the MobileUnit
             mobileUnit.SetEnemy(DaggerfallUnity.Instance, mobileEnemy, MobileReactions.Hostile, 0);
-
-            DaggerfallEntityBehaviour behaviour = atronach.GetComponent<DaggerfallEntityBehaviour>();
-            EnemyEntity entity = behaviour.Entity as EnemyEntity;
 
             //Since we made changes to MobileEnemy, we have to reset the enemy career
             entity.SetEnemyCareer(mobileEnemy, behaviour.EntityType);
         }
 
 
-        private TextFile.Token[] GetSpellMakerDescription()
+        TextFile.Token[] GetSpellMakerDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -358,7 +340,7 @@ namespace ThePenwickPapers
                 Text.CreateAtronachSpellMakerMagnitude.Get());
         }
 
-        private TextFile.Token[] GetSpellBookDescription()
+        TextFile.Token[] GetSpellBookDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -373,7 +355,7 @@ namespace ThePenwickPapers
         }
 
 
-        private string GetEffectDescription()
+        string GetEffectDescription()
         {
             ItemTemplate item = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(variants[currentVariant].itemIndex);
             return Text.CreateAtronachEffectDescription.Get(SubGroupName, item.name);

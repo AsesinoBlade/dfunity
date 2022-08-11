@@ -23,9 +23,9 @@ using DaggerfallWorkshop.Game.Weather;
 namespace ThePenwickPapers
 {
 
-    public class EnhancedInfo
+    public static class EnhancedInfo
     {
-        private class NpcData
+        class NpcData
         {
             public string Name;
             public Genders Gender;
@@ -49,23 +49,12 @@ namespace ThePenwickPapers
             public int Reaction;
             public string Descriptor;
             public string Disposition;
-            public StaticNPC staticNPC;
-            public MobilePersonNPC mobileNPC;
+            public MobilePersonNPC mobile;
         };
 
-        private struct Pair
-        {
-            private readonly int x;
-            private readonly int y;
-            public Pair(int x, int y)
-            {
-                this.x = x;
-                this.y = y;
-            }
-        }
 
         //for our purposes, shops include banks and taverns, does not include library
-        private static readonly HashSet<DFLocation.BuildingTypes> shops = new HashSet<DFLocation.BuildingTypes>()
+        static readonly HashSet<DFLocation.BuildingTypes> shops = new HashSet<DFLocation.BuildingTypes>()
         {
             Alchemist, Armorer, Bank, Bookseller, ClothingStore, FurnitureStore, GemStore,
             GeneralStore, PawnShop, WeaponSmith, Tavern
@@ -121,13 +110,12 @@ namespace ThePenwickPapers
         }
 
 
-        private static readonly Text[] livingStatus = new Text[] {
-            Text.Mutilated, Text.Mauled, Text.Wounded, Text.Bruised, Text.Healthy
+        static readonly Text[] livingStatus = new Text[] {
+            Text.Savaged, Text.Bloody, Text.Wounded, Text.Grazed, Text.Healthy
         };
-        private static readonly Text[] golemStatus = new Text[] {
-            Text.Ruined, Text.Mangled, Text.Battered, Text.Dinged, Text.Pristine
+        static readonly Text[] golemStatus = new Text[] {
+            Text.Mangled, Text.Battered, Text.Damaged, Text.Tarnished, Text.Pristine
         };
-
 
         /// <summary>
         /// Shows enhanced information about activated enemies in HUD text.
@@ -136,8 +124,8 @@ namespace ThePenwickPapers
         {
             DaggerfallEntityBehaviour player = GameManager.Instance.PlayerEntityBehaviour;
 
-            EnemyEntity creatureEntity = creature.Entity as EnemyEntity;
-            MobileEnemy mobileEnemy = creatureEntity.MobileEnemy;
+            EnemyEntity entity = creature.Entity as EnemyEntity;
+            MobileEnemy mobileEnemy = entity.MobileEnemy;
             EnemyMotor motor = creature.GetComponent<EnemyMotor>();
             EnemySenses senses = creature.GetComponent<EnemySenses>();
 
@@ -149,8 +137,8 @@ namespace ThePenwickPapers
             {
                 golem = false;  //Will treat vampires as living for descriptive purposes
             }
-
-            int index = Mathf.Clamp((int)(creatureEntity.CurrentHealthPercent * 4), 0, 4);
+            
+            int index = Mathf.Clamp((int)(entity.CurrentHealthPercent * 4), 0, 4);
             Text[] statusWords = golem ? golemStatus : livingStatus;
             string status = statusWords[index].Get();
 
@@ -159,7 +147,7 @@ namespace ThePenwickPapers
 
 
             string disposition;
-            if (mobileEnemy.Team == MobileTeams.PlayerAlly)
+            if (entity.Team == MobileTeams.PlayerAlly)
             {
                 disposition = golem ? Text.Obedient.Get() : Text.Friendly.Get();
             }
@@ -186,9 +174,9 @@ namespace ThePenwickPapers
             int maxPossibleHealth = GameObjectHelper.EnemyDict[mobileEnemy.ID].MaxHealth;
             bool hasHighRange = maxPossibleHealth > (minPossibleHealth * 2);
             int healthRangeForCreatureType = maxPossibleHealth - minPossibleHealth;
-            bool tough = creatureEntity.MaxHealth > maxPossibleHealth - (healthRangeForCreatureType / 3);
-            bool weak = creatureEntity.MaxHealth <= minPossibleHealth + (healthRangeForCreatureType / 4);
-            bool superior = creatureEntity.MaxHealth > maxPossibleHealth && creatureEntity.EntityType == EntityTypes.EnemyMonster;
+            bool tough = entity.MaxHealth > maxPossibleHealth - (healthRangeForCreatureType / 3);
+            bool weak = entity.MaxHealth <= minPossibleHealth + (healthRangeForCreatureType / 4);
+            bool superior = entity.MaxHealth > maxPossibleHealth && entity.EntityType == EntityTypes.EnemyMonster;
             string info;
             if (superior)
             {
@@ -215,7 +203,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets text related to any condition status, i.e. burning, paralyzed, etc.
         /// </summary>
-        private static string GetActiveEffectDescriptions(DaggerfallEntityBehaviour creature)
+        static string GetActiveEffectDescriptions(DaggerfallEntityBehaviour creature)
         {
             const string comma = ", ";
 
@@ -271,7 +259,7 @@ namespace ThePenwickPapers
                     else if (effect is SoulTrap)
                     {
                         effectText.Append(comma);
-                        effectText.Append(Text.SoulTrap.Get());
+                        effectText.Append(Text.SoulTrapped.Get());
                     }
                     else if (effect is FortifyEffect)
                     {
@@ -345,37 +333,40 @@ namespace ThePenwickPapers
         /// <summary>
         /// Produces HUD text related to static NPC faction and disposition to player.
         /// </summary>
-        private static void ShowStaticNPCInfo(StaticNPC staticNPC)
+        static void ShowStaticNPCInfo(StaticNPC staticNPC)
         {
-            NpcData npc = new NpcData();
-
-            npc.staticNPC = staticNPC;
-
-            npc.Name = staticNPC.DisplayName;
-            npc.Gender = staticNPC.Data.gender;
-            npc.Race = staticNPC.Data.race;
-            npc.IsChild = staticNPC.IsChildNPC;
-            npc.TextureArchive = staticNPC.Data.billboardArchiveIndex;
-            npc.TextureRecord = staticNPC.Data.billboardRecordIndex;
-
             int factionID = staticNPC.Data.factionID;
             if (factionID < 0 || factionID >= 4096)
                 factionID = 0; //certain people, like palace guards, might not have a proper faction set
 
-            npc.IsRandomRuler = factionID == (int)FactionFile.FactionIDs.Random_Ruler;
-            npc.IsRandomNoble = factionID == (int)FactionFile.FactionIDs.Random_Noble;
-            npc.IsRandomKnight = factionID == (int)FactionFile.FactionIDs.Random_Knight;
+            GetStaticNPCFactionData(factionID, GameManager.Instance.PlayerEnterExit.BuildingType, out FactionFile.FactionData factionData);
 
-            FactionFile.FactionData factionData;
-            GetStaticNPCFactionData(factionID, GameManager.Instance.PlayerEnterExit.BuildingType, out factionData);
+            NpcData npc = new NpcData
+            {
+                Name = staticNPC.DisplayName,
+                Gender = staticNPC.Data.gender,
+                Race = staticNPC.Data.race,
+                IsChild = staticNPC.IsChildNPC,
+                TextureArchive = staticNPC.Data.billboardArchiveIndex,
+                TextureRecord = staticNPC.Data.billboardRecordIndex,
 
-            npc.FactionID = (FactionFile.FactionIDs)factionData.id;
-            npc.FactionName = factionData.name;
-            npc.Social = (FactionFile.SocialGroups)factionData.sgroup;
-            npc.Guild = (FactionFile.GuildGroups)factionData.ggroup;
-            npc.IsLeafFaction = factionData.children == null || factionData.children.Count == 0;
+                IsRandomRuler = factionID == (int)FactionFile.FactionIDs.Random_Ruler,
+                IsRandomNoble = factionID == (int)FactionFile.FactionIDs.Random_Noble,
+                IsRandomKnight = factionID == (int)FactionFile.FactionIDs.Random_Knight,
+
+                FactionID = (FactionFile.FactionIDs)factionData.id,
+                FactionName = factionData.name,
+                Social = (FactionFile.SocialGroups)factionData.sgroup,
+                Guild = (FactionFile.GuildGroups)factionData.ggroup,
+                IsLeafFaction = factionData.children == null || factionData.children.Count == 0
+            };
 
             npc.IsCowled = IsCowledFigure(npc);
+
+            npc.Reaction = GetStaticNPCReaction(factionData);
+
+            npc.IsQuestGiver = IsOfferingWork(staticNPC);
+            npc.IsQuestNPC = IsQuestNPC(staticNPC);
 
             if (factionData.ggroup == (int)FactionFile.GuildGroups.None && factionData.parent != 0)
             {
@@ -388,13 +379,8 @@ namespace ThePenwickPapers
                 npc.Guild = (FactionFile.GuildGroups)factionData.ggroup;
             }
 
-            npc.Reaction = GetStaticNPCReaction(factionData);
 
-            npc.IsQuestGiver = IsOfferingWork(staticNPC);
-
-            npc.IsQuestNPC = IsQuestNPC(staticNPC);
-
-            npc.Descriptor = GetDescriptor(npc, true);
+            npc.Descriptor = GetDescriptor(npc);
             if (npc.IsRandomRuler || npc.IsRandomNoble || npc.IsRandomKnight)
             {
                 if (npc.Descriptor != null && npc.Descriptor.Length > 0)
@@ -436,7 +422,7 @@ namespace ThePenwickPapers
         /// Checks if graphic for NPC is of a cloaked/cowled figure.
         /// A cowled npc should likely not show a description or disposition.
         /// </summary>
-        private static bool IsCowledFigure(NpcData npc)
+        static bool IsCowledFigure(NpcData npc)
         {
             if (npc.TextureArchive == 176 && npc.TextureRecord == 5)
             {
@@ -459,7 +445,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Should member status be shown for NPCs that are guild officers.
         /// </summary>
-        private static bool ShouldShowMember(NpcData npc)
+        static bool ShouldShowMember(NpcData npc)
         {
             if (npc.IsUniqueIndividual)
             {
@@ -471,7 +457,6 @@ namespace ThePenwickPapers
                 //Don't show title for The Blades as they are covert
                 //Don't bother showing full title if inside guild hall
                 DFLocation.BuildingTypes buildingType = GameManager.Instance.PlayerEnterExit.BuildingType;
-                PlayerGPS.DiscoveredBuilding building = GameManager.Instance.PlayerEnterExit.BuildingDiscoveryData;
                 return npc.IsLeafFaction && buildingType != GuildHall;
             }
             else if (npc.Social == Commoners && npc.Guild == FightersGuild)
@@ -507,7 +492,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Produces HUD text related to mobile NPC faction and disposition to player.
         /// </summary>
-        private static void ShowMobileNPCInfo(MobilePersonNPC mobileNPC)
+        static void ShowMobileNPCInfo(MobilePersonNPC mobileNPC)
         {
             if (mobileNPC.IsGuard)
             {
@@ -515,30 +500,31 @@ namespace ThePenwickPapers
             }
             else
             {
-                NpcData npc = new NpcData();
-
-                npc.mobileNPC = mobileNPC;
-
-                npc.Name = mobileNPC.NameNPC;
-                npc.Gender = mobileNPC.Gender;
-                npc.Race = mobileNPC.Race;
-                npc.IsChild = false;
-                npc.TextureArchive = -1; 
-                npc.TextureRecord = -1;
-
                 // All mobile NPCs use "People of" current region faction
                 int factionId = GameManager.Instance.PlayerGPS.GetPeopleOfCurrentRegion();
 
-                FactionFile.FactionData faction;
-                GameManager.Instance.PlayerEntity.FactionData.GetFactionData(factionId, out faction);
-                npc.FactionID = (FactionFile.FactionIDs)factionId;
-                npc.FactionName = faction.name;
-                npc.Social = (FactionFile.SocialGroups)faction.sgroup;
-                npc.Guild = (FactionFile.GuildGroups)faction.ggroup;
-                
-                npc.Reaction = GetReactionToPlayer(faction);
+                GameManager.Instance.PlayerEntity.FactionData.GetFactionData(factionId, out FactionFile.FactionData faction);
 
-                npc.Descriptor = GetDescriptor(npc, false);
+                NpcData npc = new NpcData
+                {
+                    mobile = mobileNPC,
+
+                    Name = mobileNPC.NameNPC,
+                    Gender = mobileNPC.Gender,
+                    Race = mobileNPC.Race,
+                    IsChild = false,
+                    TextureArchive = -1,
+                    TextureRecord = -1,
+
+                    FactionID = (FactionFile.FactionIDs)factionId,
+                    FactionName = faction.name,
+                    Social = (FactionFile.SocialGroups)faction.sgroup,
+                    Guild = (FactionFile.GuildGroups)faction.ggroup,
+
+                    Reaction = GetReactionToPlayer(faction)
+                };
+
+                npc.Descriptor = GetDescriptor(npc);
 
                 npc.Disposition = GetDisposition(npc).Get();
 
@@ -554,7 +540,7 @@ namespace ThePenwickPapers
 
 
 
-        private static readonly string[] raceKeys = new string[]
+        static readonly string[] raceKeys = new string[]
         {
             "", "breton", "redguard", "nord", "darkElf", "highElf", "woodElf", "khajiit", "argonian",
             "vampire", "werewolf", "wereboar"
@@ -562,7 +548,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets race text info description.
         /// </summary>
-        private static string GetRaceText(Races race)
+        static string GetRaceText(Races race)
         {
             int raceIndex = (int)race;
             if (raceIndex > 0 && raceIndex < raceKeys.Length)
@@ -578,23 +564,19 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets Man/Woman or Girl/Boy text.
         /// </summary>
-        private static string GetGenderText(Genders gender, bool isChild)
+        static string GetGenderText(Genders gender, bool isChild)
         {
             if (gender == Genders.Female)
-            {
                 return (isChild ? Text.Girl : Text.Woman).Get();
-            }
             else
-            {
                 return (isChild ? Text.Boy : Text.Man).Get();
-            }
         }
 
 
         /// <summary>
         /// Generates appropriate text to describe the NPCs faction disposition towards player.
         /// </summary>
-        private static Text GetDisposition(NpcData npc)
+        static Text GetDisposition(NpcData npc)
         {
 
             if (npc.IsCowled)
@@ -608,8 +590,8 @@ namespace ThePenwickPapers
             {
                 case -4: return Text.Baleful;
                 case -3: return Text.Scowling;
-                case -2: return Text.Cold;
-                case -1: return Text.Brusque;
+                case -2: return Text.Icy;
+                case -1: return Text.Cool;
                 case 1: return Text.Tepid;
                 case 2:
                     if (npc.Guild == Vampires || npc.Guild == Necromancers
@@ -660,7 +642,7 @@ namespace ThePenwickPapers
                     {
                         return Text.Aloof;
                     }
-                    return Text.Detached;
+                    return Text.Indifferent;
             }
         }
 
@@ -668,7 +650,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets the reaction of the static NPC towards the player.
         /// </summary>
-        private static int GetStaticNPCReaction(FactionFile.FactionData faction)
+        static int GetStaticNPCReaction(FactionFile.FactionData faction)
         {
             //using some code taken from TalkManager...
 
@@ -701,7 +683,7 @@ namespace ThePenwickPapers
         /// <param name="factionId">The NPC faction ID.</param>
         /// <param name="buildingType">The NPC location building type.</param>
         /// <param name="factionData">The NPC faction data.</param>
-        private static void GetStaticNPCFactionData(int factionId, DFLocation.BuildingTypes buildingType, out FactionFile.FactionData factionData)
+        static void GetStaticNPCFactionData(int factionId, DFLocation.BuildingTypes buildingType, out FactionFile.FactionData factionData)
         {
             //Taken from TalkManager...
             if (factionId == 0)
@@ -728,7 +710,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Determines reaction to player based on provided faction data.
         /// </summary>
-        private static int GetReactionToPlayer(FactionFile.FactionData faction)
+        static int GetReactionToPlayer(FactionFile.FactionData faction)
         {
             //Taken from TalkManager
             PlayerEntity player = GameManager.Instance.PlayerEntity;
@@ -749,7 +731,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Useful for identifying town folk giving quests (Work).
         /// </summary>
-        private static bool IsOfferingWork(StaticNPC staticNPC)
+        static bool IsOfferingWork(StaticNPC staticNPC)
         {
             if (!staticNPC.IsChildNPC)
             {
@@ -765,7 +747,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if npc is involved with any active quests
         /// </summary>
-        private static bool IsQuestNPC(StaticNPC staticNPC)
+        static bool IsQuestNPC(StaticNPC staticNPC)
         {
             //check if part of active quest
             ulong[] questIDs = QuestMachine.Instance.GetAllActiveQuests();
@@ -789,7 +771,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets appropriate title for random rules, nobles, and knights
         /// </summary>
-        private static string GetTitle(NpcData npc)
+        static string GetTitle(NpcData npc)
         {
             if (npc.IsRandomKnight)
                 return TextManager.Instance.GetLocalizedEnemyName((int)MobileTypes.Knight);
@@ -803,7 +785,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Generates appropriate text to describe the NPCs mood or behaviour.
         /// </summary>
-        private static string GetDescriptor(NpcData npc, bool isStaticNPC)
+        static string GetDescriptor(NpcData npc)
         {
             if (npc.IsCowled)
                 return "";
@@ -814,7 +796,7 @@ namespace ThePenwickPapers
             indexer += GameManager.Instance.PlayerGPS.CurrentLocationIndex;
             indexer = Mathf.Abs(indexer);
 
-            if (!npc.IsQuestNPC && isStaticNPC)
+            if (!npc.IsQuestNPC && npc.mobile == null)
             {
                 //Check if of race not belonging to this region and show that.
                 //Skipping npcs generated by the quest system because the data may be suspect.
@@ -847,15 +829,15 @@ namespace ThePenwickPapers
             int fearFactor = 0;
             fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.BadHarvest] ? 20 : 0;
             fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.CrimeWave] ? 20 : 0;
-            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.PlagueOngoing] ? 50 : 0;
-            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.FamineOngoing] ? 50 : 0;
-            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.WarOngoing] ? 40 : 0;
+            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.PlagueOngoing] ? 40 : 0;
+            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.FamineOngoing] ? 45 : 0;
+            fearFactor += regionFlags[(int)PlayerEntity.RegionDataFlags.WarOngoing] ? 30 : 0;
             fearFactor = Mathf.Clamp(fearFactor, 0, 70);
 
             //...otherwise look up appropriate text based on factors like social group, guild, etc.
             Text[] descriptors = null;
 
-            Pair texture = new Pair(npc.TextureArchive, npc.TextureRecord);
+            var texture = (npc.TextureArchive, npc.TextureRecord);
 
             if (npc.FactionID == FactionFile.FactionIDs.The_Blades)
             {
@@ -1000,7 +982,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Street commoners can have descriptors related to the current seasonal weather/climate.
         /// </summary>
-        private static Text[] GetWeatherClimateDescriptors(NpcData npc)
+        static Text[] GetWeatherClimateDescriptors(NpcData npc)
         {
             DFLocation.ClimateBaseType climate = GameManager.Instance.PlayerGPS.ClimateSettings.ClimateType;
             WeatherType weather = GameManager.Instance.WeatherManager.PlayerWeather.WeatherType;
@@ -1008,7 +990,7 @@ namespace ThePenwickPapers
             bool morning = DaggerfallUnity.Instance.WorldTime.Now.Hour <= 10;
 
             int indexer = npc.TextureArchive + npc.TextureRecord + DaggerfallUnity.Instance.WorldTime.Now.Hour;
-            indexer += npc.mobileNPC != null ? npc.mobileNPC.PersonFaceRecordId : 3;
+            indexer += npc.mobile != null ? npc.mobile.PersonFaceRecordId : 3;
 
             //default to normal commoner descriptors
             Text[] descriptors = npc.Gender == Genders.Male ? maleDescriptors : femaleDescriptors;
@@ -1048,185 +1030,184 @@ namespace ThePenwickPapers
 
 
         //-------------Texture Archive,Record sets----------------- 
-        private static readonly HashSet<Pair> aspiringCommoners = new HashSet<Pair>()
+        static readonly HashSet<(int, int)> aspiringCommoners = new HashSet<(int, int)>()
         {
-            //mod compiler doesn't like C# tuples for some reason
-            new Pair(182, 9), new Pair(182, 10), new Pair(182, 27), new Pair(182, 40), new Pair(182, 41),
-            new Pair(184, 0), new Pair(184, 4), new Pair(184, 5),
-            new Pair(186, 10), new Pair(186, 11), new Pair(186, 28), new Pair(186, 41), new Pair(186, 42),
-            new Pair(195, 11), new Pair(195, 12), new Pair(195, 19), new Pair(195, 20), new Pair(195, 21),
-            new Pair(195, 22)
+            (182, 9), (182, 10), (182, 27), (182, 40), (182, 41),
+            (184, 0), (184, 4), (184, 5),
+            (186, 10), (186, 11), (186, 28), (186, 41), (186, 42),
+            (195, 11), (195, 12), (195, 19), (195, 20), (195, 21),
+            (195, 22)
         };
 
-        private static readonly HashSet<Pair> sexyCommoners = new HashSet<Pair>()
+        static readonly HashSet<(int, int)> sexyCommoners = new HashSet<(int, int)>()
         {
             //women
-            new Pair(182, 32), new Pair(182, 33), new Pair(182, 34), new Pair(182, 48),
-            new Pair(184, 6), new Pair(184, 7), new Pair(184, 8), new Pair(184, 9), new Pair(184, 10),
-            new Pair(184, 11), new Pair(184, 12), new Pair(184, 13), new Pair(184, 14),
-            new Pair(186, 33), new Pair(186, 34), new Pair(186, 35), new Pair(186, 49),
-            new Pair(195, 14),
+            (182, 32), (182, 33), (182, 34), (182, 48),
+            (184, 6), (184, 7), (184, 8), (184, 9), (184, 10),
+            (184, 11), (184, 12), (184, 13), (184, 14),
+            (186, 33), (186, 34), (186, 35), (186, 49),
+            (195, 14),
             //men
-            new Pair(182, 57), new Pair(182, 58), new Pair(186, 57), new Pair(186, 58),
-            new Pair(357, 10), new Pair(357, 11)
+            (182, 57), (182, 58), (186, 57), (186, 58),
+            (357, 10), (357, 11)
         };
 
-        private static readonly HashSet<Pair> dancers = new HashSet<Pair>()
+        static readonly HashSet<(int, int)> dancers = new HashSet<(int, int)>()
         {
-            new Pair(176, 2), new Pair(176, 3), new Pair(176, 4),
-            new Pair(178, 5), new Pair(178, 6), new Pair(179, 3),
-            new Pair(181, 5), new Pair(181, 6), new Pair(181, 7),
+            (176, 2), (176, 3), (176, 4),
+            (178, 5), (178, 6), (179, 3),
+            (181, 5), (181, 6), (181, 7),
         };
 
-        private static readonly HashSet<Pair> poorCommoners = new HashSet<Pair>()
+        static readonly HashSet<(int, int)> poorCommoners = new HashSet<(int, int)>()
         {
-            new Pair(182, 13), new Pair(182, 14), new Pair(182, 29), new Pair(182, 30),
-            new Pair(182, 31), new Pair(184, 27), new Pair(186, 14), new Pair(186, 15),
+            (182, 13), (182, 14), (182, 29), (182, 30),
+            (182, 31), (184, 27), (186, 14), (186, 15),
             //prisoners
-            new Pair(184, 31), new Pair(186, 30), new Pair(186, 31), new Pair(186, 32)
+            (184, 31), (186, 30), (186, 31), (186, 32)
         };
 
-        private static readonly HashSet<Pair> children = new HashSet<Pair>()
+        static readonly HashSet<(int, int)> children = new HashSet<(int, int)>()
         {
-            new Pair(182, 43), new Pair(182, 52), new Pair(182, 53),
-            new Pair(186, 43), new Pair(186, 44), new Pair(186, 53), new Pair(186, 54)
+            (182, 43), (182, 52), (182, 53),
+            (186, 43), (186, 44), (186, 53), (186, 54)
         };
 
 
 
         //------------Below are the text descriptions used for people in various social/guilds--------
 
-        private static readonly Text[] bladesDescriptors = new Text[]
+        static readonly Text[] bladesDescriptors = new Text[]
         {
             Text.Cryptic, Text.Enigmatic, Text.Mysterious, Text.Impenetrable, Text.Clandestine,
             Text.Covert
         };
-        private static readonly Text[] maleDescriptors = new Text[]
+        static readonly Text[] maleDescriptors = new Text[]
         {
             Text.Disheveled, Text.Muddled, Text.Eager,
             Text.Coarse, Text.Glum, Text.Weary, Text.Hopeful,
             Text.Brisk, Text.Aspiring, Text.Lively, Text.Spry, Text.Hurried,
             Text.Prudent, Text.Stern, Text.Skittish, Text.Grim, Text.Stubborn
         };
-        private static readonly Text[] femaleDescriptors = new Text[]
+        static readonly Text[] femaleDescriptors = new Text[]
         {
             Text.Frumpy, Text.Glum, Text.Weary, Text.Hopeful, Text.Flirty, Text.Eager,
             Text.Brisk, Text.Aspiring, Text.Lively, Text.Spry, Text.Hurried,
             Text.Prudent, Text.Coy, Text.Skittish, Text.Moody, Text.Stubborn
         };
-        private static readonly Text[] childDescriptors = new Text[]
+        static readonly Text[] childDescriptors = new Text[]
         {
             Text.Curious, Text.Bored, Text.Heady, Text.Giddy, Text.Playful, Text.Shy, Text.Stubborn
         };
-        private static readonly Text[] aspiringDescriptors = new Text[]
+        static readonly Text[] aspiringDescriptors = new Text[]
         {
             Text.Hopeful, Text.Brisk, Text.Aspiring, Text.Prudent, Text.Curt,
             Text.Refined, Text.Genteel, Text.Urbane, Text.Polished
         };
-        private static readonly Text[] disgustedDescriptors = new Text[]
+        static readonly Text[] disgustedDescriptors = new Text[]
         {
             Text.Disgusted, Text.Appalled, Text.Revolted, Text.Bored, Text.Annoyed, Text.Resigned,
             Text.Nauseated, Text.Repulsed, Text.Mortified, Text.Flustered, Text.Miffed
         };
-        private static readonly Text[] troubledDescriptors = new Text[]
+        static readonly Text[] troubledDescriptors = new Text[]
         {
             Text.Troubled, Text.Anxious, Text.Concerned, Text.Tense, Text.Vexed, Text.Exasperated,
             Text.Fretting, Text.Perplexed, Text.Distracted
         };
-        private static readonly Text[] wetDescriptors = new Text[]
+        static readonly Text[] wetDescriptors = new Text[]
         {
             Text.Drenched, Text.Soaked, Text.Dripping, Text.Muddy, Text.Mucky, Text.Sopping
         };
-        private static readonly Text[] sweatyDescriptors = new Text[]
+        static readonly Text[] sweatyDescriptors = new Text[]
         {
             Text.Sweaty, Text.Clammy, Text.Damp, Text.Perspiring, Text.Tired, Text.Weary
         };
-        private static readonly Text[] coldDescriptors = new Text[]
+        static readonly Text[] coldDescriptors = new Text[]
         {
             Text.Shivering, Text.Numb, Text.Chilly, Text.Invigorated, Text.Quivering, Text.Trembling
         };
-        private static readonly Text[] prostituteDescriptors = new Text[]
+        static readonly Text[] prostituteDescriptors = new Text[]
         {
             Text.Lusty, Text.Questionable, Text.Provacative, Text.Comely, Text.Alluring,
             Text.Seductive, Text.Playful, Text.Naughty, Text.Vampish, Text.Amorous, Text.Teasing,
             Text.Scandalous, Text.Impure, Text.Experienced, Text.Sullied
         };
-        private static readonly Text[] gigoloDescriptors = new Text[]
+        static readonly Text[] gigoloDescriptors = new Text[]
         {
             Text.Beefcake, Text.Hunky, Text.Virile, Text.Strapping, Text.Buff, Text.Flexing
         };
-        private static readonly Text[] dancerDescriptors = new Text[]
+        static readonly Text[] dancerDescriptors = new Text[]
         {
             Text.Lithe, Text.Sinuous, Text.Provacative, Text.Comely, Text.Alluring, Text.Fetching,
             Text.Seductive, Text.Entrancing, Text.Supple, Text.Limber, Text.Graceful
         };
-        private static readonly Text[] poorDescriptors = new Text[]
+        static readonly Text[] poorDescriptors = new Text[]
         {
             Text.Crestfallen, Text.Glum, Text.Cynical, Text.Forsaken, Text.Lorn, Text.Leery,
             Text.Bleak, Text.Joyless, Text.Stark, Text.Despondent
         };
-        private static readonly Text[] fighterDescriptors = new Text[]
+        static readonly Text[] fighterDescriptors = new Text[]
         {
             Text.Stoic, Text.Stern, Text.Calloused, Text.Scarred, Text.Hardened, Text.Steadfast,
             Text.Brave, Text.Cocky, Text.Brash, Text.Grim, Text.Stubborn, Text.Violent
         };
-        private static readonly Text[] quillDescriptors = new Text[]
+        static readonly Text[] quillDescriptors = new Text[]
         {
             //Merchant Bards are 'The Quill Circus'
             Text.Questionable, Text.Nimble, Text.Adroit, Text.Agile, Text.Cryptic, Text.Focused, 
         };
-        private static readonly Text[] merchantDescriptors = new Text[]
+        static readonly Text[] merchantDescriptors = new Text[]
         {
             //in order according to shop quality
             Text.Confused, Text.Exhausted, Text.Harried, Text.Busy, Text.Stoic, Text.Organized,
             Text.Miserly, Text.Shrewd, Text.Canny, Text.Savvy
         };
-        private static readonly Text[] bardDescriptors = new Text[]
+        static readonly Text[] bardDescriptors = new Text[]
         {
             Text.Charming, Text.Rousing, Text.Riveting, Text.Poignant, Text.Comical, Text.Jovial,
             Text.Amusing, Text.Inspiring
         };
-        private static readonly Text[] scholarDescriptors = new Text[]
+        static readonly Text[] scholarDescriptors = new Text[]
         {
             Text.Curious, Text.Focused, Text.Bookish, Text.Cerebral, Text.Refined,
             Text.Bumbling, Text.Klutzy, Text.Nervous, Text.Withdrawn, Text.Fascinating,
             Text.Studied, Text.Fascinated, Text.Perplexing
         };
-        private static readonly Text[] darkBrotherhoodDescriptors = new Text[]
+        static readonly Text[] darkBrotherhoodDescriptors = new Text[]
         {
             Text.Focused, Text.Brooding, Text.Baleful, Text.Morbid, Text.Stained, Text.Sullied,
             Text.Bloody, Text.Grim, Text.Violent, Text.Lurid
         };
-        private static readonly Text[] thiefDescriptors = new Text[]
+        static readonly Text[] thiefDescriptors = new Text[]
         {
             Text.Shifty, Text.Sly, Text.Adroit, Text.Shady, Text.Crafty, Text.Cagey, Text.Coy,
             Text.Dubious, Text.Slick, Text.Tricky, Text.Furtive, Text.Wary, Text.Cocky,
             Text.Nimble
         };
-        private static readonly Text[] necromancerDescriptors = new Text[]
+        static readonly Text[] necromancerDescriptors = new Text[]
         {
             Text.Obscure, Text.Cryptic, Text.Enigmatic, Text.Dark, Text.Devoted,
             Text.Paranoid, Text.Zealous, Text.Fervid, Text.Restless, Text.Tainted,
             Text.Fervent, Text.Impure, Text.Fetid, Text.Covert
         };
-        private static readonly Text[] knightDescriptors = new Text[]
+        static readonly Text[] knightDescriptors = new Text[]
         {
             Text.Devout, Text.Pious, Text.Faithful, Text.Wise, Text.Contemplative,
             Text.Enlightened, Text.Solemn, Text.Exemplary, Text.Stern, Text.Stoic,
             Text.Dutiful, Text.Fervent, Text.Doubtful
         };
-        private static readonly Text[] holyDescriptors = new Text[]
+        static readonly Text[] holyDescriptors = new Text[]
         {
             Text.Devout, Text.Zealous, Text.Pious, Text.Faithful, Text.Virtuous, Text.Wise,
             Text.Contemplative, Text.Enlightened, Text.Solemn, Text.Exemplary, Text.Reverent,
             Text.Dutiful, Text.Fervent, Text.Doubtful
         };
-        private static readonly Text[] witchDescriptors = new Text[]
+        static readonly Text[] witchDescriptors = new Text[]
         {
             Text.Guarded, Text.Evasive, Text.Leery, Text.Cynical, Text.Sceptical, Text.Suspicious,
-            Text.Wry, Text.Bitter, Text.Chaffing, Text.Wary, Text.Solemn
+            Text.Wry, Text.Bitter, Text.Chaffing, Text.Wary, Text.Solemn, Text.Paranoid
         };
-        private static readonly Text[] vampireDescriptors = new Text[]
+        static readonly Text[] vampireDescriptors = new Text[]
         {
             Text.Hypnotic, Text.Beguiling, Text.Perplexing, Text.Enigmatic, Text.Captivating,
             Text.Enthralling, Text.Fascinating, Text.Charming
@@ -1235,8 +1216,8 @@ namespace ThePenwickPapers
 
 
 
-    }
+    } //class EnhancedInfo
 
 
 
-}
+} //namespace

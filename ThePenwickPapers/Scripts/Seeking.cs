@@ -2,7 +2,6 @@
 // Author:       DunnyOfPenwick
 // Origin Date:  February 2022
 
-
 using System.Text;
 using System;
 using UnityEngine;
@@ -16,14 +15,14 @@ using DaggerfallConnect;
 using DaggerfallWorkshop.Game.Utility;
 using DaggerfallWorkshop.Game.MagicAndEffects.MagicEffects;
 
-
 namespace ThePenwickPapers
 {
 
     public class Seeking : IncumbentEffect
     {
-        private static readonly string EffectKey = "Seeking";
-        private float lastDirectionTime;
+        public const string EffectKey = "Seeking";
+
+        float lastDirectionTime;
         PotionRecipe seekingRecipe;
 
 
@@ -80,7 +79,8 @@ namespace ThePenwickPapers
                 return;
             }
 
-            SetIcon();
+            //set icon to either swirly spiral or DREAM blue eye
+            Utility.SetIcon(ParentBundle, 24, 187);
 
             RoundsRemaining = entityBehaviour.Entity.Stats.GetLiveStatValue(DFCareer.Stats.Willpower) / 2;
         }
@@ -90,7 +90,8 @@ namespace ThePenwickPapers
         {
             base.Resume(effectData, manager, caster);
 
-            SetIcon();
+            //set icon to either swirly spiral or DREAM blue eye
+            Utility.SetIcon(ParentBundle, 24, 187);
         }
 
 
@@ -109,7 +110,7 @@ namespace ThePenwickPapers
                 return;
 
             //prevent potentially showing quest target info every round...
-            if (Time.time < lastDirectionTime + 6f)
+            if (Time.time < lastDirectionTime + 6.5f)
                 return;
 
             lastDirectionTime = Time.time;
@@ -148,23 +149,12 @@ namespace ThePenwickPapers
         }
 
 
-        private void SetIcon()
-        {
-            ParentBundle.icon.index = 24; //swirly spiral thing
-            if (DaggerfallUI.Instance.SpellIconCollection.HasPack("D.R.E.A.M. Icons"))
-            {
-                ParentBundle.icon.key = "D.R.E.A.M. Icons";
-                ParentBundle.icon.index = 187; //blueish eye
-            }
-        }
-
-
         /// <summary>
         /// Attempts to find the quest objective in the current location, and shows directional
         /// information as HUD text if found.
         /// Returns true if the objective was found.
         /// </summary>
-        private bool ShowQuestTargetInfo()
+        bool ShowQuestTargetInfo()
         {
             bool gotTargetInfo = false;
 
@@ -218,7 +208,7 @@ namespace ThePenwickPapers
         /// Evaluates the status of the quest target, whether the player has already achieved it,
         /// or show's directions to it if they haven't.
         /// </summary>
-        private void EvaluateQuestTargetResource(QuestResourceBehaviour target)
+        void EvaluateQuestTargetResource(QuestResourceBehaviour target)
         {
             QuestResourceBehaviour[] questItems = GameObject.FindObjectsOfType<QuestResourceBehaviour>();
             
@@ -264,26 +254,25 @@ namespace ThePenwickPapers
         /// <summary>
         /// Show description of quest foe that has been defeated as HUD text.
         /// </summary>
-        private void ShowDefeatedTargetFoe(QuestResource questResource)
+        void ShowDefeatedTargetFoe(QuestResource questResource)
         {
             if (questResource is Foe)
             {
                 Foe foe = questResource as Foe;
-                string foeType;
-                foe.ExpandMacro(MacroTypes.NameMacro1, out foeType);
 
-                //TODO: Getting the actual name of the foe.  This is a generated name and that might
+                //TODO: Getting the actual name of the foe.  This is likely a generated name and that might
                 //conflict with name given by a quest, so not showing for now.
-                //string details;
-                //foe.ExpandMacro(MacroTypes.DetailsMacro, out details);
-                
+                //foe.ExpandMacro(MacroTypes.DetailsMacro, out string details);
+
+                foe.ExpandMacro(MacroTypes.NameMacro1, out string foeType);
+
                 Utility.AddHUDText(Text.AlreadyDealtWithFoe.Get(foeType));
             }
         }
 
 
-        //for use by ShowDirections()
-        private static readonly string[] directionKeys = new string[]
+
+        static readonly string[] directionKeys = new string[]
         {
             "north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"
         };
@@ -291,7 +280,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Shows the directions to the quest target as HUD text.
         /// </summary>
-        private void ShowDirections(Vector3 targetLocation)
+        void ShowDirections(Vector3 targetLocation)
         {
             Vector3 playerPosition = GameManager.Instance.PlayerMotor.transform.position;
 
@@ -347,7 +336,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Determines if the location the PC is standing in corresponds with the provided location.
         /// </summary>
-        private bool InDaggerfallLocation(string regionName, string locationName, int buildingKey)
+        bool InDaggerfallLocation(string regionName, string locationName, int buildingKey)
         {
             DFLocation dfLocation = GameManager.Instance.PlayerGPS.CurrentLocation;
 
@@ -365,7 +354,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Plays a male or female breath noise.
         /// </summary>
-        private void PlayBreath()
+        void PlayBreath()
         {
             if (GameManager.Instance.PlayerEntity.Gender == Genders.Male)
                 DaggerfallUI.Instance.PlayOneShot(ThePenwickPapersMod.Instance.MaleBreath);
@@ -376,5 +365,7 @@ namespace ThePenwickPapers
 
 
     } //class Seeking
+
+
 
 } //namespace

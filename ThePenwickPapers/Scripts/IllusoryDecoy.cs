@@ -1,6 +1,6 @@
-// Project:   Illusory Decoy for Daggerfall Unity
-// Author:    DunnyOfPenwick
-// Origin Date:  June 2021
+// Project:     Illusory Decoy, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
+// Origin Date: June 2021
 
 using System;
 using System.Collections;
@@ -22,16 +22,18 @@ namespace ThePenwickPapers
 {
     public class IllusoryDecoy : BaseEntityEffect
     {
-        private static readonly string effectKey = "IllusoryDecoy";
-        private DaggerfallEntityBehaviour decoy;
-        private DaggerfallEntityBehaviour target;
-        private bool atTargetDestination = false;
-        private bool firstRound = true;
-        private int magnitude;
-        private DaggerfallMissile lastMissileChecked;
-        private float timeOfLastAgitate;
+        public const string effectKey = "IllusoryDecoy";
 
         public static string DecoyGameObjectPrefix = "Penwick Decoy";
+
+        DaggerfallEntityBehaviour decoy;
+        DaggerfallEntityBehaviour decoyTarget;
+        bool atTargetDestination = false;
+        bool firstRound = true;
+        int magnitude;
+        DaggerfallMissile lastMissileChecked;
+        float timeOfLastAgitate;
+
 
 
         public override string GroupName => Text.IllusoryDecoyGroupName.Get();
@@ -74,8 +76,7 @@ namespace ThePenwickPapers
 
             try
             {
-                Vector3 location;
-                if (TryGetSpawnLocation(out location))
+                if (TryGetSpawnLocation(out Vector3 location))
                 {
                     Vector3 destination = GetDecoyFinalDestination();
                     Summon(location, destination);
@@ -131,13 +132,11 @@ namespace ThePenwickPapers
 
             if (decoy)
             {
+                ReapplyDecoyConstantEffects();
                 VerifyDecoyTarget();
                 AgitateNearbyFoes();
                 CheckCasterProximity();
                 CheckForMissiles();
-
-                //try to prevent the decoy from actually hitting anything
-                decoy.Entity.ChangeChanceToHitModifier(-200);
             }
         }
 
@@ -160,9 +159,9 @@ namespace ThePenwickPapers
                 GameObject.Destroy(decoy.gameObject);
             }
 
-            if (target)
+            if (decoyTarget)
             {
-                GameObject.Destroy(target.gameObject);
+                GameObject.Destroy(decoyTarget.gameObject);
             }
 
             //remember to unsubscribe events to prevent resource leaks
@@ -175,50 +174,59 @@ namespace ThePenwickPapers
         /// <summary>
         /// Refunds to caster the magicka expended on this effect.
         /// </summary>
-        private void RefundSpellCost()
+        void RefundSpellCost()
         {
-            if (manager.ReadySpell != null)
-            {
-                foreach (EffectEntry entry in manager.ReadySpell.Settings.Effects)
-                {
-                    if (entry.Key.Equals(Key) && entry.Settings.Equals(Settings))
-                    {
-                        FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
-                        Caster.Entity.IncreaseMagicka(cost.spellPointCost);
-                        break;
-                    }
-                }
-            }
+            FormulaHelper.SpellCost cost = FormulaHelper.CalculateEffectCosts(this, Settings, Caster.Entity);
+            Caster.Entity.IncreaseMagicka(cost.spellPointCost);
+        }
+
+
+        /// <summary>
+        /// Reapplies changes to decoy entity that are cleared by DaggerfallEntity.ClearConstantEffects().
+        /// </summary>
+        void ReapplyDecoyConstantEffects()
+        {
+            EnemyEntity entity = decoy.Entity as EnemyEntity;
+
+            entity.IsImmuneToDisease = true;
+            entity.IsImmuneToParalysis = true;
+            entity.IsParalyzed = false;
+
+            //try to prevent the decoy from actually hitting anything
+            entity.ChangeChanceToHitModifier(-200);
         }
 
 
         /// <summary>
         /// Makes sure the decoy isn't distracted until it reaches its destination.
         /// </summary>
-        private void VerifyDecoyTarget()
+        void VerifyDecoyTarget()
         {
             EnemySenses senses = decoy.GetComponent<EnemySenses>();
 
             EnemyMotor motor = decoy.GetComponent<EnemyMotor>();
             if (!atTargetDestination)
             {
-                if (senses.Target != target)
+                if (senses.Target != decoyTarget)
                 {
                     //we don't want our decoy to get distracted before reaching its destination
                     senses.Target = null;       //because of logic in MakeEnemyHostileToAttacker()
-                    motor.MakeEnemyHostileToAttacker(target);
+                    motor.MakeEnemyHostileToAttacker(decoyTarget);
                 }
             }
-            else if (Dice100.SuccessRoll(20))
-            {
-                //don't chase after enemies
-                senses.Target = null;
-            }
 
-            if (Caster.EntityType == EntityTypes.Player && decoy.Entity.Team != MobileTeams.PlayerAlly)
+            if (Caster.EntityType == EntityTypes.Player)
             {
-                //prevent illusory decoy from changing allegiance
-                decoy.Entity.Team = MobileTeams.PlayerAlly;
+                if (decoy.Entity.Team != MobileTeams.PlayerAlly)
+                {
+                    //prevent illusory decoy from changing allegiance
+                    decoy.Entity.Team = MobileTeams.PlayerAlly;
+                    senses.Target = null;
+                }
+            }
+            else if (decoy.Entity.Team != Caster.Entity.Team)
+            {
+                decoy.Entity.Team = Caster.Entity.Team;
                 senses.Target = null;
             }
 
@@ -228,7 +236,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Periodically attempts to agitate nearby foes, goading them to attack the decoy
         /// </summary>
-        private void AgitateNearbyFoes()
+        void AgitateNearbyFoes()
         {
             //only attempting agitation every few seconds or so
             if (Time.time - timeOfLastAgitate < 1.5f)
@@ -282,7 +290,10 @@ namespace ThePenwickPapers
         }
 
 
-        private void PlayAttractSound()
+        /// <summary>
+        /// Decoy emits an appropriate attracting sound (bark, laugh, etc.)
+        /// </summary>
+        void PlayAttractSound()
         {
             if (!decoy.isActiveAndEnabled)
                 return;
@@ -313,7 +324,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Destroys the decoy if the caster gets too close and isn't magically concealed.
         /// </summary>
-        private void CheckCasterProximity()
+        void CheckCasterProximity()
         {
             bool casterIsConcealed = Caster.Entity.IsMagicallyConcealed;
 
@@ -343,7 +354,7 @@ namespace ThePenwickPapers
         /// Checks for missiles (arrows or spells) in the area and potentially modifies mechanics
         /// to account for the decoy illusion.  Also checks if a missile is hitting the decoy.
         /// </summary>
-        private void CheckForMissiles()
+        void CheckForMissiles()
         {
             if (decoy == null) //checking again in case caster just bumped into decoy while missiles were in flight 
             {
@@ -377,12 +388,10 @@ namespace ThePenwickPapers
         }
 
 
-
-
         /// <summary>
         /// Prevent missiles from colliding with the decoy.
         /// </summary>
-        private void SetIgnoreMissileCollisions(DaggerfallMissile missile)
+        void SetIgnoreMissileCollisions(DaggerfallMissile missile)
         {
             SphereCollider missileCollider = missile.GetComponent<SphereCollider>();
             CharacterController decoyController = decoy.GetComponent<CharacterController>();
@@ -400,10 +409,9 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// AI enemy missiles can be very accurate, so we'll try a small magnitude-based dodge to
-        /// throw the aim off a little.
+        /// Try a small magnitude-based dodge to throw the enemy archer's aim off a little.
         /// </summary>
-        private void Dodge(DaggerfallMissile missile)
+        void Dodge(DaggerfallMissile missile)
         {
             if (missile.Caster == null)
             {
@@ -433,8 +441,7 @@ namespace ThePenwickPapers
 
             try //try-block just in case something bad happens
             {
-                Vector3 newLocation;
-                if (CanMoveTo(decoy.transform.position, dodgeDirection, dodgeDistance, out newLocation) ||
+                if (CanMoveTo(decoy.transform.position, dodgeDirection, dodgeDistance, out Vector3 newLocation) ||
                     CanMoveTo(decoy.transform.position, -dodgeDirection, dodgeDistance, out newLocation))
                 {
                     decoy.transform.position = newLocation;
@@ -450,7 +457,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Event handler to End() this illusion effect if another spell is readied.
         /// </summary>
-        private void OnNewReadySpellEventHandler(EntityEffectBundle spell)
+        void OnNewReadySpellEventHandler(EntityEffectBundle spell)
         {
             if (decoy)
                 Utility.AddHUDText(Text.LostConcentration.Get());
@@ -458,15 +465,17 @@ namespace ThePenwickPapers
             End();
         }
 
-        private static readonly float[] scanDistancesNormal = { 1.8f, 2.8f };
-        private static readonly float[] scanDistancesLookingDown = { 3.0f, 4.0f };
-        private static readonly float[] scanLefRightRots = { 0, 5, -5, 15, -15, 30, -30, 45, -45 };
-        private static readonly float[] scanDownUpRots = { 25, 0, -25 };
+
+
+        static readonly float[] scanDistancesNormal = { 1.8f, 2.8f };
+        static readonly float[] scanDistancesLookingDown = { 3.0f, 4.0f };
+        static readonly float[] scanLefRightRots = { 0, 5, -5, 15, -15, 30, -30, 45, -45 };
+        static readonly float[] scanDownUpRots = { 25, 0, -25 };
 
         /// <summary>
         /// Scans the area in front of the caster and tries to find a location that can fit a medium-sized creature.
         /// </summary>
-        private bool TryGetSpawnLocation(out Vector3 location)
+        bool TryGetSpawnLocation(out Vector3 location)
         {
             Transform casterTransform = Caster.transform;
             float[] scanDistances = scanDistancesNormal;
@@ -508,7 +517,7 @@ namespace ThePenwickPapers
         /// Checks for visibility of destination and if there is space available to hold a medium-sized creature.
         /// Note that this method will probably not work for small creatures like rats.
         /// </summary>
-        private bool CanMoveTo(Vector3 currentPosition, Vector3 direction, float distance, out Vector3 newLocation)
+        bool CanMoveTo(Vector3 currentPosition, Vector3 direction, float distance, out Vector3 newLocation)
         {
             newLocation = Vector3.zero;
 
@@ -516,8 +525,8 @@ namespace ThePenwickPapers
 
             //shouldn't be anything in the way
             Ray ray = new Ray(currentPosition, direction);
-            RaycastHit hit; //might be useful for debugging
-            if (Physics.Raycast(ray, out hit, distance, casterLayerMask))
+
+            if (Physics.Raycast(ray, distance, casterLayerMask))
             {
                 return false;
             }
@@ -536,7 +545,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Determines the final destination of the decoy based on the direction the caster is looking.
         /// </summary>
-        private Vector3 GetDecoyFinalDestination()
+        Vector3 GetDecoyFinalDestination()
         {
             Vector3 position = Caster.transform.position;
             Vector3 forward = Caster.transform.forward;
@@ -550,8 +559,7 @@ namespace ThePenwickPapers
 
             int casterLayerMask = ~(1 << Caster.gameObject.layer);
 
-            RaycastHit hit;
-            if (Physics.Raycast(position, forward, out hit, maxDistance, casterLayerMask))
+            if (Physics.Raycast(position, forward, out RaycastHit hit, maxDistance, casterLayerMask))
             {
                 return hit.point - forward * 0.02f;
             }
@@ -565,14 +573,14 @@ namespace ThePenwickPapers
         /// <summary>
         /// Creates a decoy and starts it moving toward a destination.
         /// </summary>
-        private void Summon(Vector3 location, Vector3 destination)
+        void Summon(Vector3 location, Vector3 destination)
         {
             MobileTypes decoyType = IllusoryDecoyCatalog.GetDecoyType(Caster, location, destination);
 
             CreateDecoy(decoyType, location);
 
-            target = Utility.CreateTarget(destination);
-            target.gameObject.name = "George, the decoy target bat";
+            decoyTarget = Utility.CreateTarget(destination);
+            decoyTarget.gameObject.name = "George, the decoy target bat";
 
             IEnumerator coroutine = RunDecoy();
             manager.StartCoroutine(coroutine);
@@ -582,7 +590,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Instantiates a decoy unit and modifies its attributes.
         /// </summary>
-        private void CreateDecoy(MobileTypes decoyType, Vector3 location)
+        void CreateDecoy(MobileTypes decoyType, Vector3 location)
         {
             string displayName = string.Format(DecoyGameObjectPrefix + " [{0}]", decoyType.ToString());
             Transform parent = GameObjectHelper.GetBestParent();
@@ -601,10 +609,8 @@ namespace ThePenwickPapers
                     MobileGender.Female : MobileGender.Male;
             }
 
-            bool allied = Caster.EntityType == EntityTypes.Player;
-
             SetupDemoEnemy setupEnemy = go.GetComponent<SetupDemoEnemy>();
-            setupEnemy.ApplyEnemySettings(decoyType, MobileReactions.Hostile, gender, 0, allied);
+            setupEnemy.ApplyEnemySettings(decoyType, MobileReactions.Hostile, gender, 0, false);
 
             decoy = go.GetComponent<DaggerfallEntityBehaviour>();
 
@@ -645,8 +651,6 @@ namespace ThePenwickPapers
             entity.Gender = (mobileEnemy.Gender == MobileGender.Female) ? Genders.Female : Genders.Male;
 
             //try to prevent 'spell resisted' type messages from appearing
-            entity.IsImmuneToDisease = true;
-            entity.IsImmuneToParalysis = true;
             entity.Resistances.SetPermanentResistanceValue(DFCareer.Elements.Fire, 0);
             entity.Resistances.SetPermanentResistanceValue(DFCareer.Elements.Frost, 0);
             entity.Resistances.SetPermanentResistanceValue(DFCareer.Elements.Magic, 0);
@@ -662,16 +666,16 @@ namespace ThePenwickPapers
             entity.Stats.SetPermanentStatValue(DFCareer.Stats.Strength, 20);
             entity.Stats.SetPermanentStatValue(DFCareer.Stats.Agility, 100);
 
-            short dodging = (short)(magnitude * 4);
+            short dodging = (short)Mathf.Clamp(magnitude * 4, 1, 1000);
             if (entity.EntityType == EntityTypes.EnemyMonster)
             {
-                //by default, monster types are easier to hit than class types
+                //by default, monster types are easier to hit than class types, so adjust for that
                 dodging += 160;
             }
             entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Dodging, dodging);
             entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Stealth, 0); //it's a DECOY
             entity.Skills.SetPermanentSkillValue(DFCareer.Skills.HandToHand, 1);
-            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Streetwise, 200); //to avoid dirty tricks
+            entity.Skills.SetPermanentSkillValue(DFCareer.Skills.Streetwise, 500); //to avoid dirty tricks
             entity.CurrentMagicka = 0;
             entity.MaxMagicka = 0;
             entity.CurrentHealth = 1;
@@ -688,6 +692,8 @@ namespace ThePenwickPapers
             }
             entity.ArmorValues = armor;
 
+            entity.Team = Caster.EntityType == EntityTypes.Player ? MobileTeams.PlayerAlly : Caster.Entity.Team;
+            mobileEnemy.Team = entity.Team;
 
             //If decoy 'dies', the OnDeathHandler will destroy it leaving no body.
             //No need to unsubscribe this event since it is attached to the decoy that 'dies'.
@@ -738,7 +744,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// If decoy 'dies', it needs to be immediately destroyed, leaving no body or death message behind.
         /// </summary>
-        private void Decoy_OnDeathHandler(DaggerfallEntity entity)
+        void Decoy_OnDeathHandler(DaggerfallEntity entity)
         {
             End();
         }
@@ -748,7 +754,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Decoy EntityEffectManager event handler, called when a spell bundle gets assigned to the decoy.
         /// </summary>
-        private void Decoy_OnAssignBundle(LiveEffectBundle bundleAdded)
+        void Decoy_OnAssignBundle(LiveEffectBundle bundleAdded)
         {
             //decoy shouldn't have any live spell effects attached to it
             if (decoy)
@@ -763,10 +769,10 @@ namespace ThePenwickPapers
         /// Coroutine to activate the decoy and start it towards its destination.
         /// The coroutine ends when its destination is reached; it then behaves as a typical allied unit.
         /// </summary>
-        private IEnumerator RunDecoy()
+        IEnumerator RunDecoy()
         {
             EnemyMotor motor = decoy.GetComponent<EnemyMotor>();
-            motor.MakeEnemyHostileToAttacker(target);
+            motor.MakeEnemyHostileToAttacker(decoyTarget);
 
             float blinkDelay = 0.1f;
             bool blink = true;
@@ -788,9 +794,9 @@ namespace ThePenwickPapers
             //loop-wait for decoy to reach target destination or until stopped by something
             while (decoy && !atTargetDestination)
             {
-                float distanceToTarget = Vector3.Distance(decoy.transform.position, target.transform.position);
+                float distanceToTarget = Vector3.Distance(decoy.transform.position, decoyTarget.transform.position);
                 float lastMoveDistance = Vector3.Distance(decoy.transform.position, lastPosition);
-                if (distanceToTarget < 2 || lastMoveDistance < 0.05f)
+                if (distanceToTarget < 1.5f || lastMoveDistance < 0.05f)
                 {
                     atTargetDestination = true;
                 }
@@ -805,11 +811,16 @@ namespace ThePenwickPapers
                 EnemySenses senses = decoy.GetComponent<EnemySenses>();
                 senses.Target = null;
                 senses.SecondaryTarget = null;
+
+                //try to keep the decoy from chasing after targets
+                senses.SightRadius = 2.0f;
+                senses.HearingRadius = 2.0f;
             }
+
         }
 
 
-        private TextFile.Token[] GetSpellMakerDescription()
+        TextFile.Token[] GetSpellMakerDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -822,7 +833,7 @@ namespace ThePenwickPapers
                 Text.IllusoryDecoySpellMakerMagnitude.Get());
         }
 
-        private TextFile.Token[] GetSpellBookDescription()
+        TextFile.Token[] GetSpellBookDescription()
         {
             return DaggerfallUnity.Instance.TextProvider.CreateTokens(
                 TextFile.Formatting.JustifyCenter,
@@ -840,5 +851,8 @@ namespace ThePenwickPapers
         }
 
 
-    }
-}
+
+    } //class IllusoryDecoy
+
+
+} //namespace

@@ -13,15 +13,18 @@ using DaggerfallWorkshop.Game.MagicAndEffects;
 using DaggerfallConnect;
 using DaggerfallWorkshop.Game.UserInterfaceWindows;
 using DaggerfallWorkshop.Game.UserInterface;
+using DaggerfallWorkshop.Game.Items;
 
 namespace ThePenwickPapers
 {
 
-    public class DirtyTricks
+    public static class DirtyTricks
     {
-        private const float blindRange = 4.0f;
-        private const float bootRange = 7.0f; //max range at which player can *begin* a boot attempt
-        private const float peepRange = 0.6f;
+        const float blindRange = 4.0f;
+        const float bootRange = 6f; //max range at which player can *begin* a boot attempt
+        const float peepRange = 0.6f;
+        const int pebblesOfSkulduggeryItemIndex = 545; //value from thiefoverhaul/skulduggery mod
+        const int pebblesConditionReduction = 9;
 
         public static bool EnableBlinding = false;
         public static bool EnableChock = false;
@@ -29,12 +32,12 @@ namespace ThePenwickPapers
         public static bool EnableTheBoot = false;
         public static bool EnablePeep = false;
 
-        private static float lastDiversionAttempt = -15f;
-        private static float lastPlayerBlindAttempt = -15f;
-        private static float lastEnemyBlindAttempt = -15f;
-        private static bool peeping;
+        static float lastPlayerBlindAttempt = -15f;
+        static float lastEnemyBlindAttempt = -15f;
+        static float lastRefillAttempt;
+        static bool peeping;
 
-        private static readonly HashSet<MobileTypes> sneakyTypes = new HashSet<MobileTypes>() {
+        static readonly HashSet<MobileTypes> sneakyTypes = new HashSet<MobileTypes>() {
             MobileTypes.Bard, MobileTypes.Burglar, MobileTypes.Rogue, MobileTypes.Thief
         };
 
@@ -47,6 +50,8 @@ namespace ThePenwickPapers
         {
             if (!hitInfo.collider)
                 return false;
+
+            bool isShowingHandAnimation = Utility.IsShowingHandAnimation();
 
             PlayerActivateModes mode = GameManager.Instance.PlayerActivate.CurrentMode;
 
@@ -72,7 +77,9 @@ namespace ThePenwickPapers
                     bool isFacing = IsFacingTrickster(creature, GameManager.Instance.PlayerEntityBehaviour);
                     if (isFacing)
                     {
-                        AttemptBlindByPlayer(creature);
+                        if (!isShowingHandAnimation)
+                            AttemptBlindByPlayer(creature);
+
                         return true;
                     }
                 }
@@ -87,7 +94,9 @@ namespace ThePenwickPapers
                 }
                 else if (EnableDiversion && isTerrain && hitInfo.distance > 5)
                 {
-                    AttemptDiversion(hitInfo);
+                    if (!isShowingHandAnimation)
+                        AttemptDiversion(hitInfo);
+
                     return true;
                 }
             }
@@ -95,7 +104,9 @@ namespace ThePenwickPapers
             {
                 if (creature && hitInfo.distance <= bootRange)
                 {
-                    AttemptBoot(creature);
+                    if (!isShowingHandAnimation)
+                        AttemptBoot(creature);
+
                     return true;
                 }
             }
@@ -117,10 +128,13 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Certain enemy classes in range will periodically attempt to blind the player.
+        /// Certain enemy classes in range will periodically attempt to blind the player or others.
         /// </summary>
         public static void CheckEnemyBlindAttempt()
         {
+            if (EnableBlinding == false)
+                return;
+
             //only check for blind attempts once in a while
             if (Dice100.FailedRoll(1))
                 return;
@@ -140,15 +154,24 @@ namespace ThePenwickPapers
                     continue;
 
                 EnemyEntity entity = behaviour.Entity as EnemyEntity;
-                if (entity.IsParalyzed)
+
+                if (!sneakyTypes.Contains((MobileTypes)entity.MobileEnemy.ID))
+                    continue;    //only certain enemy types will attempt blinding
+                else if (entity.IsParalyzed)
                     continue;
                 else if (behaviour.gameObject.name.StartsWith(IllusoryDecoy.DecoyGameObjectPrefix))
                     continue;
-                else if (!sneakyTypes.Contains((MobileTypes)entity.MobileEnemy.ID))
-                    continue;    //only certain enemy types will attempt blinding
                 else if (Vector3.Distance(senses.Target.transform.position, behaviour.transform.position) > blindRange)
                     continue;
                 else if (!IsFacingTrickster(senses.Target, behaviour))
+                    continue;
+
+                //do raycast to check if anything is in the way (doors, other entities, etc.)
+                Vector3 direction = (senses.Target.transform.position - behaviour.transform.position).normalized;
+                if (!Physics.Raycast(behaviour.transform.position, direction, out RaycastHit hitInfo, blindRange))
+                    continue;
+
+                if (hitInfo.collider.GetComponent<DaggerfallEntityBehaviour>() != senses.Target)
                     continue;
 
                 AttemptBlind(behaviour, senses.Target);
@@ -158,9 +181,36 @@ namespace ThePenwickPapers
                 if (senses.Target == GameManager.Instance.PlayerEntityBehaviour)
                     GameManager.Instance.PlayerEntity.TallySkill(DFCareer.Skills.Streetwise, 1);
 
-                break;
+                break; //if it gets this far, break out of loop
             }
 
+
+        }
+
+        /// <summary>
+        /// Called on update to attempt to refill depleted Pebbles of Skulduggery
+        /// </summary>
+        public static void RefillPebblesOfSkulduggery()
+        {
+            if (EnableDiversion == false)
+                return;
+
+            if (Time.time < lastRefillAttempt + 30f)
+                return;
+            
+            lastRefillAttempt = Time.time;
+
+            DaggerfallUnityItem pebbles = Utility.GetEquippedItem(pebblesOfSkulduggeryItemIndex);
+            if (pebbles != null && pebbles.currentCondition > 0 && pebbles.currentCondition <= pebbles.maxCondition)
+            {
+                int luck = GameManager.Instance.PlayerEntity.Stats.GetLiveStatValue(DFCareer.Stats.Luck);
+                if (Dice100.SuccessRoll(luck))
+                {
+                    pebbles.currentCondition += pebblesConditionReduction;
+                    if (pebbles.currentCondition > pebbles.maxCondition)
+                        pebbles.currentCondition = pebbles.maxCondition;
+                }
+            }
 
         }
 
@@ -168,7 +218,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if the target (victim) is facing towards the trickster.
         /// </summary>
-        private static bool IsFacingTrickster(DaggerfallEntityBehaviour victim, DaggerfallEntityBehaviour trickster)
+        static bool IsFacingTrickster(DaggerfallEntityBehaviour victim, DaggerfallEntityBehaviour trickster)
         {
             float angle = Vector3.SignedAngle(victim.transform.forward, trickster.transform.forward, Vector3.up);
 
@@ -181,7 +231,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Player attempts to blind target creature
         /// </summary>
-        private static void AttemptBlindByPlayer(DaggerfallEntityBehaviour creature)
+        static void AttemptBlindByPlayer(DaggerfallEntityBehaviour victim)
         {
             DaggerfallEntityBehaviour playerBehaviour = GameManager.Instance.PlayerEntityBehaviour;
             PlayerEntity playerEntity = GameManager.Instance.PlayerEntity;
@@ -193,18 +243,25 @@ namespace ThePenwickPapers
             else if (Utility.IsBlind(playerBehaviour))
                 return;
 
-            float rechargeTime = (140 - playerEntity.Stats.LiveLuck) / 8.0f;
-            rechargeTime = Mathf.Clamp(rechargeTime, 5, 15);
+            float rechargeTime = (140 - playerEntity.Stats.LiveLuck) / 7.0f;
 
             if (Time.time < lastPlayerBlindAttempt + rechargeTime)
+            {
+                Utility.AddHUDText(Text.NotYet.Get());
                 return;
+            }
 
             lastPlayerBlindAttempt = Time.time;
 
             //always at least some skill increment
             playerEntity.TallySkill(DFCareer.Skills.Pickpocket, 1);
 
-            if (AttemptBlind(playerBehaviour, creature))
+            //show hand wave/swipe animation
+            ThePenwickPapersMod.HandWaveAnimator.DoHandWave();
+
+            CommitHostileAct(victim);
+
+            if (AttemptBlind(playerBehaviour, victim))
             {
                 //another tally on success
                 playerEntity.TallySkill(DFCareer.Skills.Pickpocket, 1);
@@ -213,7 +270,7 @@ namespace ThePenwickPapers
         }
 
 
-        private static readonly HashSet<MobileTypes> resistant = new HashSet<MobileTypes>() {
+        static readonly HashSet<MobileTypes> resistant = new HashSet<MobileTypes>() {
             MobileTypes.FireAtronach, MobileTypes.FleshAtronach, MobileTypes.IceAtronach, MobileTypes.IronAtronach,
             MobileTypes.Spider, MobileTypes.GiantScorpion, MobileTypes.Spriggan
         };
@@ -221,31 +278,37 @@ namespace ThePenwickPapers
         /// Performs skill checks to see if a blinding attempt succeeds.
         /// Applies Blind incumbent effect on success.
         /// </summary>
-        private static bool AttemptBlind(DaggerfallEntityBehaviour trickster, DaggerfallEntityBehaviour victim)
+        static bool AttemptBlind(DaggerfallEntityBehaviour trickster, DaggerfallEntityBehaviour victim)
         {
             //attempting blinding maneuver, play sound
             DaggerfallAudioSource dfAudioSource = trickster.GetComponent<DaggerfallAudioSource>();
             dfAudioSource.PlayOneShot(SoundClips.SwingHighPitch, 1, 0.5f);
 
             //Check chance of success by comparing trickster pickpocket&agility versus victim streetwise&agility
-            int offense = trickster.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Pickpocket);
-            offense += trickster.Entity.Stats.LiveAgility / 2;
-
+            int pickpocket = trickster.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Pickpocket);
             int streetwise = victim.Entity.Skills.GetLiveSkillValue(DFCareer.Skills.Streetwise);
 
-            if (victim.EntityType != EntityTypes.Player)
+            if (victim != GameManager.Instance.PlayerEntityBehaviour)
             {
                 EnemyEntity enemy = victim.Entity as EnemyEntity;
-
                 if (Blind.Immune.Contains((MobileTypes)enemy.MobileEnemy.ID))
                     return false;
                 else if (resistant.Contains((MobileTypes)enemy.MobileEnemy.ID) && Dice100.SuccessRoll(50))
                     return false;
 
-                //adjusting enemy streetwise skill
+                //adjusting enemy skills.  In the base game enemy skills go up 5pts per level by default
                 bool isSneaky = sneakyTypes.Contains((MobileTypes)enemy.MobileEnemy.ID);
                 streetwise -= enemy.Level * (isSneaky ? 2 : 4);
             }
+
+            if (trickster != GameManager.Instance.PlayerEntityBehaviour)
+            {
+                //adjusting enemy skills.  In the base game enemy skills go up 5pts per level by default
+                pickpocket -= trickster.Entity.Level * 2;
+            }
+
+            int offense = pickpocket;
+            offense += trickster.Entity.Stats.LiveAgility / 2;
 
             int defense = streetwise;
             defense += victim.Entity.Stats.LiveAgility / 2;
@@ -267,7 +330,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Performs animation and knockback, then applies Blind incumbent effect on victim.
         /// </summary>
-        private static void BlindVictim(DaggerfallEntityBehaviour victim)
+        static void BlindVictim(DaggerfallEntityBehaviour victim)
         {
             //Do knockback and dirt animation on non-player victims
             if (victim.EntityType != EntityTypes.Player)
@@ -314,7 +377,7 @@ namespace ThePenwickPapers
         /// Effectively 'locks' a closed, unlocked door with a makeshift chock.
         /// Must be an inward opening door.
         /// </summary>
-        private static bool ChockDoor(DaggerfallActionDoor door)
+        static bool ChockDoor(DaggerfallActionDoor door)
         {
             Vector3 playerForward = GameManager.Instance.PlayerObject.transform.forward;
             if (Vector3.Angle(playerForward, door.transform.forward) <= 90)
@@ -346,7 +409,7 @@ namespace ThePenwickPapers
         /// Unchocks a chocked door.
         /// Must be an inward opening door.
         /// </summary>
-        private static bool UnchockDoor(DaggerfallActionDoor door)
+        static bool UnchockDoor(DaggerfallActionDoor door)
         {
             Vector3 playerForward = GameManager.Instance.PlayerObject.transform.forward;
             if (Vector3.Angle(playerForward, door.transform.forward) <= 90)
@@ -368,20 +431,27 @@ namespace ThePenwickPapers
         /// <summary>
         /// Tosses a pebble to distract unaware/unengaged opponents.
         /// </summary>
-        private static void AttemptDiversion(RaycastHit hitInfo)
+        static void AttemptDiversion(RaycastHit hitInfo)
         {
             if (GameManager.Instance.PlayerEnterExit.IsPlayerSubmerged)
                 return;
 
-            float rechargeTime = (160 - GameManager.Instance.PlayerEntity.Stats.LiveLuck) / 10.0f;
-            rechargeTime = Mathf.Clamp(rechargeTime, 4, 20);
-
-            if (Time.time < lastDiversionAttempt + rechargeTime)
+            DaggerfallUnityItem pebbles = Utility.GetEquippedItem(pebblesOfSkulduggeryItemIndex);
+            if (pebbles == null)
                 return;
 
-            lastDiversionAttempt = Time.time;
+            if (pebbles.currentCondition - pebblesConditionReduction < 1)
+            {
+                Utility.AddHUDText(Text.OutOfPebbles.Get());
+                return;
+            }
+
+            pebbles.LowerCondition(pebblesConditionReduction);
 
             Vector3 location = hitInfo.point + (hitInfo.normal * 0.1f);
+
+            //show hand wave/swipe animation
+            ThePenwickPapersMod.HandWaveAnimator.DoHandWave();
 
             DaggerfallAudioSource audio = GameManager.Instance.PlayerObject.GetComponent<DaggerfallAudioSource>();
             audio.PlayOneShot(SoundClips.SwingHighPitch, 1, 0.3f);
@@ -391,13 +461,14 @@ namespace ThePenwickPapers
             IEnumerator coroutine = DoDiversion(hitInfo.distance, diversion);
             ThePenwickPapersMod.Instance.StartCoroutine(coroutine);
 
+            return;
         }
 
 
         /// <summary>
         /// A coroutine that handles the diversion mechanism on opponents in range.
         /// </summary>
-        private static IEnumerator DoDiversion(float distance, DaggerfallEntityBehaviour diversion)
+        static IEnumerator DoDiversion(float distance, DaggerfallEntityBehaviour diversion)
         {
             yield return new WaitForSeconds(distance * 0.1f);
 
@@ -406,7 +477,7 @@ namespace ThePenwickPapers
             DaggerfallAudioSource dfAudioSource = DaggerfallUI.Instance.GetComponent<DaggerfallAudioSource>();
             dfAudioSource.PlayClipAtPoint(SoundClips.DiceRoll2, location, 1.0f);
 
-            List<DaggerfallEntityBehaviour> enemyBehaviours = Utility.GetNearbyEntities(location, 11);
+            List<DaggerfallEntityBehaviour> enemyBehaviours = Utility.GetNearbyEntities(location, 14);
 
             foreach (DaggerfallEntityBehaviour behaviour in enemyBehaviours)
             {
@@ -416,8 +487,10 @@ namespace ThePenwickPapers
                 EnemyEntity entity = behaviour.Entity as EnemyEntity;
                 EnemySenses senses = behaviour.GetComponent<EnemySenses>();
 
-                if (senses == null || senses.Target != null)
-                    continue;    //if target is engaged, ignore diversions
+                if (senses == null)
+                    continue;
+                else if (senses.Target != null && senses.TargetInSight)
+                    continue;    //if target is engaged with visible target, ignore diversions
                 else if (behaviour.gameObject.name.StartsWith(IllusoryDecoy.DecoyGameObjectPrefix))
                     continue;
                 else if (entity.Team == MobileTeams.PlayerAlly)
@@ -437,17 +510,12 @@ namespace ThePenwickPapers
         /// <summary>
         /// Attempts to apply a boot to the face.
         /// </summary>
-        private static void AttemptBoot(DaggerfallEntityBehaviour victim)
+        static void AttemptBoot(DaggerfallEntityBehaviour victim)
         {
-            WeaponManager manager = GameManager.Instance.WeaponManager;
-
-            if (manager.ScreenWeapon.IsAttacking() || ThePenwickPapersMod.TheBoot.IsAttacking())
-                return;
-
             DaggerfallUI.Instance.PlayOneShot(SoundClips.SwingMediumPitch);
 
-            ThePenwickPapersMod.TheBoot.ShowWeapon = true;
-            ThePenwickPapersMod.TheBoot.OnAttackDirection(WeaponManager.MouseDirections.Up);
+            ThePenwickPapersMod.TheBootAnimator.enabled = true;
+            ThePenwickPapersMod.TheBootAnimator.OnAttackDirection(WeaponManager.MouseDirections.Up);
 
             IEnumerator coroutine = BootCoroutine(victim);
             ThePenwickPapersMod.Instance.StartCoroutine(coroutine);
@@ -457,27 +525,29 @@ namespace ThePenwickPapers
         /// <summary>
         /// Coroutine that handles TheBoot animation and triggers a knockback attempt.
         /// </summary>
-        private static IEnumerator BootCoroutine(DaggerfallEntityBehaviour victim)
+        static IEnumerator BootCoroutine(DaggerfallEntityBehaviour victim)
         {
-            int hitFrame = ThePenwickPapersMod.TheBoot.GetHitFrame();
+            FPSWeapon TheBoot = ThePenwickPapersMod.TheBootAnimator;
 
-            while (ThePenwickPapersMod.TheBoot.IsAttacking() && ThePenwickPapersMod.TheBoot.GetCurrentFrame() < hitFrame)
-                yield return new WaitForSeconds(0.02f);
+            int hitFrame = TheBoot.GetHitFrame();
+
+            while (TheBoot.IsAttacking() && TheBoot.GetCurrentFrame() < hitFrame)
+                yield return null;
 
             CheckKnockAttempt(victim);
 
-            while (ThePenwickPapersMod.TheBoot.IsAttacking() && ThePenwickPapersMod.TheBoot.GetCurrentFrame() < 4)
+            while (TheBoot.IsAttacking() && TheBoot.GetCurrentFrame() < 4)
                 yield return null;
 
-            ThePenwickPapersMod.TheBoot.ChangeWeaponState(WeaponStates.Idle);
-            ThePenwickPapersMod.TheBoot.ShowWeapon = false;
+            TheBoot.ChangeWeaponState(WeaponStates.Idle);
+            TheBoot.enabled = false;
         }
 
 
         /// <summary>
         /// Handles contested attempt to knockback the victim; performs knockback on success.
         /// </summary>
-        private static void CheckKnockAttempt(DaggerfallEntityBehaviour victim)
+        static void CheckKnockAttempt(DaggerfallEntityBehaviour victim)
         {
             PlayerEntity player = GameManager.Instance.PlayerEntity;
             PlayerMotor playerMotor = GameManager.Instance.PlayerMotor;
@@ -494,12 +564,10 @@ namespace ThePenwickPapers
 
             EnemyEntity enemy = victim.Entity as EnemyEntity;
 
-            EnemyMotor motor = victim.GetComponent<EnemyMotor>();
-            motor.MakeEnemyHostileToAttacker(GameManager.Instance.PlayerEntityBehaviour);
+            CommitHostileAct(victim);
 
             //Check if victim is at the contact point
-            RaycastHit hit;
-            if (!Physics.Raycast(playerMotor.transform.position, playerMotor.transform.forward, out hit, 2.3f))
+            if (!Physics.Raycast(playerMotor.transform.position, playerMotor.transform.forward, out RaycastHit hit, 2.3f))
                 return;
 
             if (!hit.collider || hit.collider.GetComponent<DaggerfallEntityBehaviour>() != victim)
@@ -556,6 +624,7 @@ namespace ThePenwickPapers
             if (playerMotor.IsSwimming)
                 effective /= 4;
 
+            EnemyMotor motor = victim.GetComponent<EnemyMotor>();
             motor.KnockbackSpeed += effective;
             motor.KnockbackDirection = direction;
 
@@ -568,7 +637,7 @@ namespace ThePenwickPapers
         /// Peeps through door hole, or under door if crouching.
         /// Stops peeping when a key is pressed.
         /// </summary>
-        private static IEnumerator PeepDoor(RaycastHit hitInfo, DaggerfallActionDoor actionDoor)
+        static IEnumerator PeepDoor(RaycastHit hitInfo, DaggerfallActionDoor actionDoor)
         {
             Collider door = actionDoor.GetComponent<BoxCollider>();
 
@@ -577,9 +646,11 @@ namespace ThePenwickPapers
             Vector3 pos;
             if (isCrouching)
             {
-                //Looking under door
-                RaycastHit floorHit;
-                if (!Physics.Raycast(door.bounds.center, Vector3.down, out floorHit))
+                //Looking under door, it's possible the raycast might not find the ground correctly in a few cases
+                if (!Physics.Raycast(door.bounds.center, Vector3.down, out RaycastHit floorHit))
+                    yield break;
+
+                if (floorHit.distance > 5)
                     yield break;
 
                 pos = floorHit.point;
@@ -589,12 +660,12 @@ namespace ThePenwickPapers
             {
                 pos = door.bounds.center;
 
-                //Peephole can be located at various positions on door.
+                //Peephole can be located at various positions on different doors.
                 //Using a consistently repeatable algorithm based on door position.
-                float hOffset = (Mathf.Abs(door.bounds.center.x * 13.7f % 10) - 5) / 15f; //-0.33 to 0.33
-                float vOffset = Mathf.Abs(door.bounds.center.z * 13.7f % 10) / 12f; //0.0 to 0.833
+                float hOffset = (Mathf.Abs(door.bounds.center.x % 10) - 5) / 15f; //-0.33 to 0.33
+                float vOffset = Mathf.Abs(door.bounds.center.z % 10) / 12f - 0.15f; //-0.15 to 0.68
                 pos.y = GameManager.Instance.PlayerMotor.transform.position.y;
-                pos.y += vOffset;
+                pos.y += vOffset; //waist-height plus offset
                 bool northSouthDoor = Vector3.Angle(hitInfo.normal, Vector3.forward) != 90;
                 if (northSouthDoor)
                     pos.x += hOffset;
@@ -606,6 +677,7 @@ namespace ThePenwickPapers
 
             GameObject peeper = new GameObject("Penwick Peeper");
 
+            //camera will be placed inside of door, which should allow player to see through the door
             peeper.transform.position = pos;
 
             Camera camera = peeper.AddComponent<Camera>();
@@ -626,7 +698,7 @@ namespace ThePenwickPapers
             hud.ParentPanel.BackgroundTexture = peepTexture;
             hud.ParentPanel.BackgroundTextureLayout = BackgroundLayout.StretchToFill;
 
-            yield return new WaitForSeconds(0.2f); //should be enough time to finish initial mouse click
+            yield return new WaitForSeconds(0.25f); //should be enough time to finish initial mouse click
             
             while (actionDoor.IsClosed && !InputManager.Instance.AnyKeyDown)
             {
@@ -637,6 +709,32 @@ namespace ThePenwickPapers
             GameObject.Destroy(peeper);
             hud.ParentPanel.BackgroundTexture = null;
             peeping = false;
+        }
+
+
+        /// <summary>
+        /// Makes the victim hostile to the player, if not already.
+        /// Any neutral nearby entities on the same team as the victim will also become hostile.
+        /// </summary>
+        static void CommitHostileAct(DaggerfallEntityBehaviour victim)
+        {
+            EnemyMotor victimMotor = victim.GetComponent<EnemyMotor>();
+            if (victimMotor == null)
+                return;
+
+            if (victimMotor.IsHostile == false)
+            {
+                foreach (DaggerfallEntityBehaviour creature in Utility.GetNearbyEntities(25))
+                {
+                    if (creature.Entity.Team != MobileTeams.PlayerAlly && creature.Entity.Team == victim.Entity.Team)
+                    {
+                        EnemyMotor motor = creature.GetComponent<EnemyMotor>();
+                        motor.IsHostile = true;
+                    }
+                }
+
+                victimMotor.MakeEnemyHostileToAttacker(GameManager.Instance.PlayerEntityBehaviour);
+            }
         }
 
 

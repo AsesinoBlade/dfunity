@@ -94,28 +94,6 @@
             "$version": "v1"
         },
         {
-            "Name": "Options",
-            "Description": "",
-            "IsAdvanced": false,
-            "Keys": [
-                {
-                    "Value": true,
-                    "Name": "TeleportMinions",
-                    "Description": "See textdatabase.txt",
-                    "$version": "v1",
-                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
-                },
-                {
-                    "Value": false,
-                    "Name": "StartGameWithPotionOfSeeking",
-                    "Description": "See textdatabase.txt",
-                    "$version": "v1",
-                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
-                }
-            ],
-            "$version": "v1"
-        },
-        {
             "Name": "Space1",
             "Description": null,
             "IsAdvanced": false,
@@ -134,6 +112,69 @@
             "Description": null,
             "IsAdvanced": false,
             "Keys": [],
+            "$version": "v1"
+        },
+        {
+            "Name": "Space4",
+            "Description": null,
+            "IsAdvanced": false,
+            "Keys": [],
+            "$version": "v1"
+        },
+        {
+            "Name": "Space5",
+            "Description": null,
+            "IsAdvanced": false,
+            "Keys": [],
+            "$version": "v1"
+        },
+        {
+            "Name": "Space6",
+            "Description": null,
+            "IsAdvanced": false,
+            "Keys": [],
+            "$version": "v1"
+        },
+        {
+            "Name": "Options",
+            "Description": "",
+            "IsAdvanced": false,
+            "Keys": [
+                {
+                    "Value": true,
+                    "Name": "TeleportMinions",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Options": [
+                        "Mute",
+                        "Low",
+                        "Medium",
+                        "Normal"
+                    ],
+                    "Value": 2,
+                    "Name": "MinionSoundVolume",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.MultipleChoiceKey"
+                },
+                {
+                    "Value": false,
+                    "Name": "StartGameWithPotionOfSeeking",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                },
+                {
+                    "Value": true,
+                    "Name": "LootAdjustment",
+                    "Description": "See textdatabase.txt",
+                    "$version": "v1",
+                    "$type": "DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings.ToggleKey"
+                }
+            ],
             "$version": "v1"
         },
         {

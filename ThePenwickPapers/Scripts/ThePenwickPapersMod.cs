@@ -18,32 +18,32 @@ using DaggerfallWorkshop.Game.Formulas;
 
 namespace ThePenwickPapers
 {
-    public class ThePenwickPapersMod : MonoBehaviour, IHasModSaveData
+    public class ThePenwickPapersMod : MonoBehaviour
     {
-        private static Mod mod;
-        private static string missingTextSubstring;
+        static Mod mod;
+        static string missingTextSubstring;
 
         public static ThePenwickPapersMod Instance;
         public static SaveData Persistent = new SaveData();
-        public static FPSWeapon TheBoot;
+        public static FPSWeapon TheBootAnimator;
+        public static FPSGrapplingHook GrapplingHookAnimator;
+        public static FPSHandWave HandWaveAnimator;
+        public static bool UsingHiResSprites;
 
-        private int potionOfSeekingRecipeKey;
-        private bool swallowActions = false;
-        private PlayerActivateModes storedMode;
-        private int modeSwitchCountdown = 0;
+        int potionOfSeekingRecipeKey;
+        bool swallowActions = false;
+        PlayerActivateModes storedMode;
+        int modeSwitchCountdown = 0;
 
         //mod settings
-        private bool enableEnhancedInfo;
-        private bool enableTrapping;
-        private bool enableHerbalism;
-        private bool mouse3Check;
-        private PlayerActivateModes mouse3Mode;
-        private bool mouse4Check;
-        private PlayerActivateModes mouse4Mode;
-        private bool enableTeleportMinions;
-        private bool startGameWithPotionOfSeeking;
-        private bool enableGoverningAttributes;
-        private int skillPerLevel;
+        bool enableEnhancedInfo;
+        bool enableTrapping;
+        bool enableHerbalism;
+        int mouse3Mode;
+        int mouse4Mode;
+        bool startGameWithPotionOfSeeking;
+        bool enableGoverningAttributes;
+        bool enableLootAdjustment;
 
         //assets
         public Texture2D SummoningEggTexture;
@@ -51,6 +51,9 @@ namespace ThePenwickPapers
         public Texture2D PeepSlitTexture;
         public Texture2D GrapplingHookTexture;
         public Texture2D RopeTexture;
+        public Texture2D GrapplingHookIdleTexture;
+        public Texture2D GrapplingHookFlyingTexture;
+        public Texture2D GrapplingHookHandTexture;
         public AudioClip WarpIn;
         public AudioClip ReanimateWarp;
         public AudioClip MaleOi;
@@ -62,7 +65,6 @@ namespace ThePenwickPapers
         public AudioClip WindNoise;
 
 
-
         [Invoke(StateManager.StateTypes.Start, 0)]
         public static void Init(InitParams initParams)
         {
@@ -70,12 +72,17 @@ namespace ThePenwickPapers
 
             var go = new GameObject(mod.Title);
             go.AddComponent<ThePenwickPapersMod>();
-            go.name = "The Penwick Papers";
 
             //support for DirtyTricks/TheBoot
-            TheBoot = go.AddComponent<FPSWeapon>();
-            TheBoot.WeaponType = WeaponTypes.Melee;
-            TheBoot.ShowWeapon = false;
+            TheBootAnimator = go.AddComponent<FPSWeapon>();
+            TheBootAnimator.WeaponType = WeaponTypes.Melee;
+            TheBootAnimator.enabled = false;
+
+            GrapplingHookAnimator = go.AddComponent<FPSGrapplingHook>();
+            GrapplingHookAnimator.enabled = false;
+
+            HandWaveAnimator = go.AddComponent<FPSHandWave>();
+            HandWaveAnimator.enabled = false;
 
             missingTextSubstring = UnityEngine.Localization.Settings.LocalizationSettings.StringDatabase.NoTranslationFoundMessage.Substring(0, 14);
 
@@ -99,7 +106,7 @@ namespace ThePenwickPapers
         {
             string result = GetText(key);
 
-            return !result.StartsWith(missingTextSubstring);
+            return result.Length > 0 && !result.StartsWith(missingTextSubstring);
         }
 
 
@@ -112,42 +119,29 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Returns the recipe key for the potion of seeking.
+        /// </summary>
         public int GetPotionOfSeekingRecipeKey()
         {
             return potionOfSeekingRecipeKey;
         }
 
 
-        public Type SaveDataType
-        {
-            get { return typeof(SaveData); }
-        }
-
-        public object NewSaveData()
-        {
-            return new SaveData();
-        }
-
-        public object GetSaveData()
-        {
-            return Persistent;
-        }
-
-        public void RestoreSaveData(object obj)
-        {
-            Persistent = (SaveData)obj;
-        }
 
 
-        private void Start()
+        void Start()
         {
             Debug.Log("Start(): ThePenwickPapers");
 
             Instance = this;
 
-            mod.SaveDataInterface = this;
+            mod.SaveDataInterface = Persistent;
+
+            UsingHiResSprites = ModManager.Instance.GetMod("DREAM - SPRITES") != null;
 
             InitModSettings();
+
 
             //Make sure all localization text keys have entries in textdatabase.txt
             if (TextExtension.CheckTextKeysValid())
@@ -162,9 +156,8 @@ namespace ThePenwickPapers
             SaveLoadManager.OnLoad += SaveLoadManager_OnLoadHandler;
             PlayerDeath.OnPlayerDeath += PlayerDeath_OnPlayerDeathHandler;
             DaggerfallWorkshop.Game.UserInterfaceWindows.DaggerfallRestWindow.OnSleepEnd += DaggerfallRestWindow_OnSleepEndHandler;
-            PlayerEnterExit.OnTransitionExterior += PlayerEnterExit_OnTransitionExteriorHandler;
-            PlayerEnterExit.OnTransitionDungeonExterior += PlayerEnterExit_OnTransitionDungeonExteriorHandler;
-            GameManager.OnEnemySpawn += GameManager_OnEnemySpawnHandler;
+            EnemyEntity.OnLootSpawned += EnemyEntity_OnLootSpawned;
+            PlayerEnterExit.OnPreTransition += PlayerEnterExit_HandleOnPreTransition;
 
             //load resources
             LoadTextures();
@@ -178,8 +171,6 @@ namespace ThePenwickPapers
 
                 FormulaHelper.RegisterOverride(mod, "CalculatePlayerLevel",
                     (Func<int, int, int>)SkillAdvancement.CalculatePlayerLevel);
-
-                SkillAdvancement.SkillPerLevel = skillPerLevel;
             }
 
             RegisterSpellsAndItems();
@@ -188,10 +179,15 @@ namespace ThePenwickPapers
         }
 
 
-        private void Update()
+
+        void Update()
         {
             if (GameManager.IsGamePaused)
             {
+                //check if showing character sheet window or inventory window and add encumbrance detail information
+                EncumbranceDetails.CheckAddComponents();
+                SkillAdvancement.CheckAddLevelButton();
+
                 return; //Let's not hasten the heat-death of the universe
             }
 
@@ -199,20 +195,20 @@ namespace ThePenwickPapers
 
             CheckUndeadInTown();
 
-            if (DirtyTricks.EnableBlinding)
-            {
-                DirtyTricks.CheckEnemyBlindAttempt();
-            }
+            DirtyTricks.CheckEnemyBlindAttempt();
+
+            DirtyTricks.RefillPebblesOfSkulduggery();
 
             //control behavior of any summoned atronach/undead minions
             PenwickMinion.GuideMinions();
+
         }
 
 
         /// <summary>
         /// Gathers the settings data from the mod settings
         /// </summary>
-        private void InitModSettings()
+        void InitModSettings()
         {
             ModSettings modSettings = mod.GetSettings();
 
@@ -231,39 +227,26 @@ namespace ThePenwickPapers
             DirtyTricks.EnableTheBoot = modSettings.GetBool(featuresSection, "DirtyTricks-TheBoot");
             DirtyTricks.EnablePeep = modSettings.GetBool(featuresSection, "DirtyTricks-Peep");
 
-            mouse3Check = true;
-            mouse4Check = true;
-            switch (modSettings.GetInt(featuresSection, "Mouse3"))
-            {
-                case 1: mouse3Mode = PlayerActivateModes.Steal; break;
-                case 2: mouse3Mode = PlayerActivateModes.Grab; break;
-                case 3: mouse3Mode = PlayerActivateModes.Info; break;
-                case 4: mouse3Mode = PlayerActivateModes.Talk; break;
-                default: mouse3Check = false; break;
-            }
-            switch (modSettings.GetInt(featuresSection, "Mouse4"))
-            {
-                case 1: mouse4Mode = PlayerActivateModes.Steal; break;
-                case 2: mouse4Mode = PlayerActivateModes.Grab; break;
-                case 3: mouse4Mode = PlayerActivateModes.Info; break;
-                case 4: mouse4Mode = PlayerActivateModes.Talk; break;
-                default: mouse4Check = false; break;
-            }
+            mouse3Mode = modSettings.GetInt(featuresSection, "Mouse3");
+            mouse4Mode = modSettings.GetInt(featuresSection, "Mouse4");
+
 
             //Options
             string optionsSection = "Options";
 
-            enableTeleportMinions = modSettings.GetBool(optionsSection, "TeleportMinions");
-            PenwickMinion.SetAutoTeleportMinions(enableTeleportMinions);
+            PenwickMinion.AutoTeleportMinions = modSettings.GetBool(optionsSection, "TeleportMinions");
+
+            PenwickMinion.MinionVolume = modSettings.GetInt(optionsSection, "MinionSoundVolume");
 
             startGameWithPotionOfSeeking = modSettings.GetBool(optionsSection, "StartGameWithPotionOfSeeking");
 
+            enableLootAdjustment = modSettings.GetBool(optionsSection, "LootAdjustment");
 
             //Advancement
             string advancementSection = "Advancement";
             enableGoverningAttributes = modSettings.GetBool(advancementSection, "GoverningAttributes");
 
-            skillPerLevel = modSettings.GetInt(advancementSection, "SkillPerLevel");
+            SkillAdvancement.SkillPerLevel = modSettings.GetInt(advancementSection, "SkillPerLevel");
         }
 
 
@@ -272,7 +255,7 @@ namespace ThePenwickPapers
         /// Checks for player activation actions and passes control to appropriate modules.
         /// If no module can use the activation action, it is ignored and left to the system.
         /// </summary>
-        private void CheckForActivationAction()
+        void CheckForActivationAction()
         {
             //Check if user-configured alternate mouse buttons have been used
             CheckMouseButtonOneShotActions();
@@ -299,7 +282,7 @@ namespace ThePenwickPapers
             //which gives us an opportunity to test and swallow events if needed.
             if (InputManager.Instance.ActionStarted(InputManager.Actions.ActivateCenterObject))
             {
-                if (GameManager.Instance.PlayerEffectManager.ReadySpell != null)
+                if (GameManager.Instance.PlayerEffectManager.HasReadySpell)
                 {
                     return;
                 }
@@ -309,12 +292,11 @@ namespace ThePenwickPapers
                 }
 
                 Camera camera = GameManager.Instance.MainCamera;
-                RaycastHit hitInfo;
                 int playerLayerMask = ~(1 << LayerMask.NameToLayer("Player"));
 
                 Ray ray = new Ray(camera.transform.position, camera.transform.forward);
                 float maxDistance = 16;
-                bool hitSomething = Physics.Raycast(ray, out hitInfo, maxDistance, playerLayerMask);
+                bool hitSomething = Physics.Raycast(ray, out RaycastHit hitInfo, maxDistance, playerLayerMask);
 
                 if (hitSomething)
                 {
@@ -370,14 +352,12 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if alternate mouse buttons have been clicked (mouse buttons 3 and 4)
         /// and handles the action by briefly switching to alternate interaction mode,
-        /// performing the activation, then switching back over a span of multiple frames.
+        /// performing the activation, then switching back, over a span of multiple frames.
         /// </summary>
-        private void CheckMouseButtonOneShotActions()
+        void CheckMouseButtonOneShotActions()
         {
             if (modeSwitchCountdown > 0)
-            {
                 --modeSwitchCountdown;
-            }
 
             if (modeSwitchCountdown == 1)
             {
@@ -385,34 +365,48 @@ namespace ThePenwickPapers
                 GameManager.Instance.PlayerActivate.ChangeInteractionMode(storedMode, false);
             }
 
-            if (mouse3Check && InputManager.Instance.GetKeyUp(KeyCode.Mouse3))
-            {
-                if (mouse3Mode != GameManager.Instance.PlayerActivate.CurrentMode)
-                {
-                    storedMode = GameManager.Instance.PlayerActivate.CurrentMode;
-                    modeSwitchCountdown = 3;
-                    GameManager.Instance.PlayerActivate.ChangeInteractionMode(mouse3Mode, false);
-                }
-                InputManager.Instance.AddAction(InputManager.Actions.ActivateCenterObject);
-            }
-            else if (mouse4Check && InputManager.Instance.GetKeyUp(KeyCode.Mouse4))
-            {
-                if (mouse4Mode != GameManager.Instance.PlayerActivate.CurrentMode)
-                {
-                    storedMode = GameManager.Instance.PlayerActivate.CurrentMode;
-                    modeSwitchCountdown = 3;
-                    GameManager.Instance.PlayerActivate.ChangeInteractionMode(mouse4Mode, false);
-                }
-                InputManager.Instance.AddAction(InputManager.Actions.ActivateCenterObject);
-            }
+            //check to see if mouse3 or mouse4 buttons have been used
+            if (InputManager.Instance.GetKeyUp(KeyCode.Mouse3))
+                StartOneShotMouseAction(mouse3Mode);
+            else if (InputManager.Instance.GetKeyUp(KeyCode.Mouse4))
+                StartOneShotMouseAction(mouse4Mode);
 
         }
+
+
+
+        /// <summary>
+        /// Switches activation mode if necessary and adds the ActivateCenterObject action to InputManager.
+        /// </summary>
+        void StartOneShotMouseAction(int modeNum)
+        {
+            PlayerActivateModes mode;
+
+            switch (modeNum)
+            {
+                case 1: mode = PlayerActivateModes.Steal; break;
+                case 2: mode = PlayerActivateModes.Grab; break;
+                case 3: mode = PlayerActivateModes.Info; break;
+                case 4: mode = PlayerActivateModes.Talk; break;
+                default: return;
+            }
+
+            if (mode != GameManager.Instance.PlayerActivate.CurrentMode)
+            {
+                storedMode = GameManager.Instance.PlayerActivate.CurrentMode;
+                modeSwitchCountdown = 3;
+                GameManager.Instance.PlayerActivate.ChangeInteractionMode(mode, false);
+            }
+
+            InputManager.Instance.AddAction(InputManager.Actions.ActivateCenterObject);
+        }
+
 
 
         /// <summary>
         /// Check if player is walking around town with reanimated undead, which is a felony is these parts.
         /// </summary>
-        private void CheckUndeadInTown()
+        void CheckUndeadInTown()
         {
             if (!GameManager.Instance.PlayerGPS.IsPlayerInTown(true, true))
                 return;  //either not in a town or inside a buliding
@@ -433,8 +427,7 @@ namespace ThePenwickPapers
             //Player is in a town, outside, during the daytime.
             //Check if they have any undead minions.
             // "Oi! You gotta loicence for dat zombie?"
-            PenwickMinion[] minions = PenwickMinion.GetMinions();
-            foreach (PenwickMinion minion in minions)
+            foreach (PenwickMinion minion in PenwickMinion.GetMinions())
             {
                 EnemyEntity entity = minion.GetComponent<DaggerfallEntityBehaviour>().Entity as EnemyEntity;
                 if (entity.MobileEnemy.Affinity == MobileAffinity.Undead)
@@ -452,7 +445,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Loads the sound assets used by this mod
         /// </summary>
-        private void LoadSounds()
+        void LoadSounds()
         {
             ModManager modManager = ModManager.Instance;
             bool success = true;
@@ -475,7 +468,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Loads the texture assets needed by this mod.
         /// </summary>
-        private void LoadTextures()
+        void LoadTextures()
         {
             //using native game texture for summoning egg
             GetTextureResults results = GetBuiltinTexture(157, 1);
@@ -493,8 +486,19 @@ namespace ThePenwickPapers
             bool success = true;
             success &= modManager.TryGetAsset("PeepHole", false, out PeepHoleTexture);
             success &= modManager.TryGetAsset("PeepSlit", false, out PeepSlitTexture);
-            success &= modManager.TryGetAsset("GrapplingHook", false, out GrapplingHookTexture);
-            success &= modManager.TryGetAsset("Rope", false, out RopeTexture);
+            if (UsingHiResSprites)
+            {
+                success &= modManager.TryGetAsset("GrapplingHookHi", false, out GrapplingHookTexture);
+                success &= modManager.TryGetAsset("RopeHi", false, out RopeTexture);
+            }
+            else
+            {
+                success &= modManager.TryGetAsset("GrapplingHook", false, out GrapplingHookTexture);
+                success &= modManager.TryGetAsset("Rope", false, out RopeTexture);
+            }
+            success &= modManager.TryGetAsset("GrapplingHookIdle", false, out GrapplingHookIdleTexture);
+            success &= modManager.TryGetAsset("GrapplingHookFlying", false, out GrapplingHookFlyingTexture);
+            success &= modManager.TryGetAsset("GrapplingHookHand", false, out GrapplingHookHandTexture);
 
             if (!success)
                 throw new Exception("Missing texture asset");
@@ -504,13 +508,15 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets game texture as GetTextureResults given the archive and record.
         /// </summary>
-        private GetTextureResults GetBuiltinTexture(int archive, int record)
+        GetTextureResults GetBuiltinTexture(int archive, int record)
         {
-            GetTextureSettings settings = new GetTextureSettings();
-            settings.archive = archive;
-            settings.record = record;
-            settings.frame = 0;
-            settings.stayReadable = true;
+            GetTextureSettings settings = new GetTextureSettings
+            {
+                archive = archive,
+                record = record,
+                frame = 0,
+                stayReadable = true
+            };
             return DaggerfallUnity.Instance.MaterialReader.TextureReader.GetTexture2D(settings);
         }
 
@@ -518,7 +524,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Registers magic effect templates and item templates.
         /// </summary>
-        private void RegisterSpellsAndItems()
+        void RegisterSpellsAndItems()
         {
             EntityEffectBroker effectBroker = GameManager.Instance.EntityEffectBroker;
 
@@ -553,6 +559,9 @@ namespace ThePenwickPapers
             Reanimate reanimateTemplateEffect = new Reanimate();
             effectBroker.RegisterEffectTemplate(reanimateTemplateEffect);
 
+            Scour scourTemplateEffect = new Scour();
+            effectBroker.RegisterEffectTemplate(scourTemplateEffect);
+
             IllusoryDecoy illusoryDecoyTemplateEffect = new IllusoryDecoy();
             effectBroker.RegisterEffectTemplate(illusoryDecoyTemplateEffect);
 
@@ -574,7 +583,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Event handler triggered when creating a new character.
         /// </summary>
-        private void StartGameBehaviour_OnStartGameHandler(object sender, EventArgs e)
+        void StartGameBehaviour_OnStartGameHandler(object sender, EventArgs e)
         {
             PlayerEntity player = GameManager.Instance.PlayerEntity;
 
@@ -613,7 +622,16 @@ namespace ThePenwickPapers
         /// <summary>
         /// Event handler triggered when a game has started loading.
         /// </summary>
-        private void SaveLoadManager_OnStartLoadHandler(SaveData_v1 saveData)
+        void SaveLoadManager_OnStartLoadHandler(SaveData_v1 saveData)
+        {
+            WindWalk.Reset();
+        }
+
+
+        /// <summary>
+        /// Event handler triggered when player dies
+        /// </summary>
+        void PlayerDeath_OnPlayerDeathHandler(object sender, EventArgs e)
         {
             WindWalk.Reset();
         }
@@ -622,7 +640,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Event handler triggered when a game has finished loading.
         /// </summary>
-        private void SaveLoadManager_OnLoadHandler(SaveData_v1 saveData)
+        void SaveLoadManager_OnLoadHandler(SaveData_v1 saveData)
         {
             PenwickMinion.InitializeOnLoad();
 
@@ -631,7 +649,19 @@ namespace ThePenwickPapers
 
             if (enableHerbalism)
                 Herbalism.OnLoadEvent();
+        }
 
+
+        /// <summary>
+        /// Event handler triggered when player exits a dungeon.
+        /// </summary>
+        void PlayerEnterExit_HandleOnPreTransition(PlayerEnterExit.TransitionEventArgs args)
+        {
+            //Clear landmark journal dungeon locations when entering/exiting a dungeon
+            Persistent.DungeonLocations.Clear();
+
+            //Enemies in dungeons might have slightly different loot (like torches)
+            Loot.InDungeon = args.TransitionType == PlayerEnterExit.TransitionType.ToDungeonInterior;
         }
 
 
@@ -640,7 +670,7 @@ namespace ThePenwickPapers
         /// Heal/recharge minions after lengthy rest, if possible.
         /// Distant following minions catch up to player.
         /// </summary>
-        private void DaggerfallRestWindow_OnSleepEndHandler()
+        void DaggerfallRestWindow_OnSleepEndHandler()
         {
             PenwickMinion.RepositionFollowers();
             PenwickMinion.Rest();
@@ -648,52 +678,14 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Event handler triggered when player dies
+        /// Event handler triggered when enemy loot spawns, which usually happens when creature is created
         /// </summary>
-        private void PlayerDeath_OnPlayerDeathHandler(object sender, EventArgs e)
+        void EnemyEntity_OnLootSpawned(System.Object sender, EnemyLootSpawnedEventArgs lootArgs)
         {
-            WindWalk.Reset();
-        }
-
-
-        /// <summary>
-        /// Event handler triggered when new enemy spawns
-        /// </summary>
-        private void GameManager_OnEnemySpawnHandler(GameObject enemy)
-        {
-            Loot.AddItems(enemy);
-        }
-
-
-        /// <summary>
-        /// Event handler triggered when player exits a building
-        /// </summary>
-        private void PlayerEnterExit_OnTransitionExteriorHandler(PlayerEnterExit.TransitionEventArgs args)
-        {
-            SetWindWalkExitingCountdown();
-        }
-
-        /// <summary>
-        /// Event handler triggered when player exits a dungeon
-        /// </summary>
-        private void PlayerEnterExit_OnTransitionDungeonExteriorHandler(PlayerEnterExit.TransitionEventArgs args)
-        {
-            SetWindWalkExitingCountdown();
-        }
-
-
-        /// <summary>
-        /// It takes a bit of time to stabilize player location when exiting a location.
-        /// Inform any active WindWalk effects.
-        /// </summary>
-        private void SetWindWalkExitingCountdown()
-        {
-            IEntityEffect effect = GameManager.Instance.PlayerEffectManager.FindIncumbentEffect<WindWalk>();
-            if (effect == null)
-                return;
-
-            WindWalk windWalkEffect = effect as WindWalk;
-            windWalkEffect.SetExitLocationCountdown();
+            if (enableLootAdjustment && sender is EnemyEntity)
+            {
+                Loot.AddItems(sender as EnemyEntity, lootArgs);
+            }
         }
 
 

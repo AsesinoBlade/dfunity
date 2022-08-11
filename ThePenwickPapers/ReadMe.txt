@@ -32,7 +32,7 @@ When the player activates a ledge in 'Grab' mode, a climbable grappling hook/rop
 It effectively functions as a portable wall.
 
 
-Landmark Journal (somewhat improved replacement for the Delver Compass mod)
+Landmark Journal
 -------------------------------------------------------------------------------
 The Landmark Journal allows for fast-travel within the confines of dungeons 
 and towns to places the player has already visited and marked. 
@@ -78,9 +78,10 @@ Fair Warning: some of the sneakier opponents can pull the same trick on you...
 
 -Diversion
 It's the old throw-pebble-to-distract-opponent trick.
+The Pebbles of Skulduggery (from the Skulduggery mod) must be equipped.
 To use, click a distant floor or wall while in 'Steal' mode.
 Most nearby unengaged opponents will be attracted to the sound and investigate.
-This is a rechargeable ability, with a luck-based recharge time.
+The Pebbles of Skulduggery will be depleted, but will be recharged over a time dependent on Luck.
 
 -The Boot
 Some find riches and fame in the reaches of The Iliac Bay, others just find a boot to the face.
@@ -171,6 +172,11 @@ Small creatures (rats) and weightless entities can't trigger traps.
 Building and dismantling traps is a convenient way to train lockpicking skill.
 
 
+Detailed Encumbrance
+------------------------------------------------------------------------------
+When hovering over the backpack in the inventory screen, a detailed breakdown of item weight will be shown in the panel.
+This information will also be shown when clicking the 'Encumbrance' button on the character sheet screen.
+
 
 Potion Of Seeking
 ------------------------------------------------------------------------------
@@ -205,14 +211,12 @@ scores with significantly less forced training and/or practice.
 
 Character leveling effectively unlocks new content.  Depending on skills, your character can potentially level significantly quicker than
 normal.  To compensate for that, it is suggested that you increase the skill-per-level rate a bit if you have Governing Attributes enabled.
-Note that if skills-per-level is changed from the default of 15, the level-up progress shown on the character screen when you click 'Level'
-will no longer be accurate, as it is not currently possible to manipulate that value.
 
 
 
 ----------------------Spells----------------------
 
---Create Atronach (improved replacement for existing Create Atronach mod)
+--Create Atronach
 This Mysticism spell allows the caster to construct an atronach minion to aid them.
 An ingredient/component must be consumed to cast the spell; the ingredient required depends on the atronach type.
 The atronach is a permanent creation, but doesn't leave the dungeon/area when the player exits or fast-travels.
@@ -222,6 +226,7 @@ Uncontrolled atronachs can be dangerous, but still useful.
 The spell magnitude determines the durability of the atronach.
 Speaking to an allied atronach toggles follow/stay behaviour.
 An allied atronach can be pushed by activating it in 'Grab' mode.
+Atronachs can pick up amulets dropped by the player and equip them, if it is better than what they have.
 The maximum number of minions that can follow the player is determined by Willpower.
 Following atronachs and undead minions that have been lost will find the player character after a long rest
 or when the Landmark Journal fast travel is used.  
@@ -237,11 +242,19 @@ Like the Create Atronach spell, having a high Willpower helps.
 A more powerful soul results in a more durable minion, but is also harder to control.
 The type of undead is mostly determined by the vessel the spell is cast on, and soul type in a few cases.
 Undead minions can be commanded similarly to atronachs created by the Create Atronach spell.
+Undead minions can pick up amulets dropped by the player and equip them, if it is better than what they have.
+Skeletal warriors can also equip one-handed weapons and shields.
+Liches can equip staves and cloaks.
+Equipped weapons won't be used to attack unless the average damage is better than the minion's default.
 WARNING: use of this spell has significant negative impact on Divine faction reputations, so temple members should
 avoid this spell.  Reputation with a few factions will be increased, however.
 
 
---Illusory Decoy (somewhat improved replacement for existing Illusory Decoy mod)
+--Scour
+Converts human corpses into skeletal ones.
+
+
+--Illusory Decoy
 This Illusion spell creates an illusory creature to distract foes.
 The form the illusion takes is determined by the caster's best language skills and the current environment.
 The decoy will be destroyed if struck, but a high spell magnitude will increase its evasiveness.

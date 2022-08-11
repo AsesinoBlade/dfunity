@@ -1,5 +1,5 @@
-// Project:   Landmark Journal for Daggerfall Unity
-// Author:    DunnyOfPenwick
+// Project:     Landmark Journal, The Penwick Papers for Daggerfall Unity
+// Author:      DunnyOfPenwick
 // Origin Date: Apr 2021
 
 using System.Collections.Generic;
@@ -13,18 +13,18 @@ namespace ThePenwickPapers
 {
     public class LandmarkJournalPopupWindow : DaggerfallPopupWindow
     {
-        private Rect travelButtonRect = new Rect(5, 5, 120, 7);
-        private Rect rememberButtonRect = new Rect(5, 14, 120, 7);
-        private Rect forgetButtonRect = new Rect(5, 23, 120, 7);
-        private Rect exitButtonRect = new Rect(44, 32, 43, 10);
+        readonly List<LandmarkLocation> locations = null;
+        readonly Panel mainPanel = new Panel();
 
-        private List<LandmarkLocation> locations = null;
+        Rect travelButtonRect = new Rect(5, 5, 120, 7);
+        Rect rememberButtonRect = new Rect(5, 14, 120, 7);
+        Rect forgetButtonRect = new Rect(5, 23, 120, 7);
+        Rect exitButtonRect = new Rect(44, 32, 43, 10);
 
-        protected Panel mainPanel = new Panel();
-        protected Button travelButton = new Button();
-        protected Button rememberButton = new Button();
-        protected Button forgetButton = new Button();
-        protected Button exitButton = new Button();
+        Button travelButton = new Button();
+        Button rememberButton = new Button();
+        Button forgetButton = new Button();
+        Button exitButton = new Button();
 
 
         public LandmarkJournalPopupWindow(IUserInterfaceManager uiManager, List<LandmarkLocation> locations)
@@ -49,18 +49,15 @@ namespace ThePenwickPapers
             bool hasRememberedLocationNearby = IsRememberedLocationNearby();
             Color32 disabledColor = new Color32(100, 100, 100, 255);
 
+
             // "Travel to..." button
             travelButton = DaggerfallUI.AddButton(travelButtonRect, mainPanel);
             travelButton.HorizontalAlignment = HorizontalAlignment.Center;
             travelButton.Label.Text = Text.TravelButtonText.Get();
             if (locations.Count == 0)
-            {
                 travelButton.Label.TextColor = disabledColor;
-            }
             else
-            {
                 travelButton.OnMouseClick += TravelButton_OnMouseClick;
-            }
 
 
             // "Remember this spot" button
@@ -68,26 +65,20 @@ namespace ThePenwickPapers
             rememberButton.HorizontalAlignment = HorizontalAlignment.Center;
             rememberButton.Label.Text = Text.RememberButtonText.Get();
             if (hasRememberedLocationNearby)
-            {
                 rememberButton.Label.TextColor = disabledColor;
-            }
             else
-            {
                 rememberButton.OnMouseClick += RememberButton_OnMouseClick;
-            }
+
 
             // "Forget this spot" button
             forgetButton = DaggerfallUI.AddButton(forgetButtonRect, mainPanel);
             forgetButton.HorizontalAlignment = HorizontalAlignment.Center;
             forgetButton.Label.Text = Text.ForgetButtonText.Get();
             if (hasRememberedLocationNearby)
-            {
                 forgetButton.OnMouseClick += ForgetButton_OnMouseClick;
-            }
             else
-            {
                 forgetButton.Label.TextColor = disabledColor;
-            }
+
 
             // Exit button
             exitButton = DaggerfallUI.AddButton(exitButtonRect, mainPanel);
@@ -100,7 +91,10 @@ namespace ThePenwickPapers
         }
 
 
-        protected virtual void TravelButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
+        /// <summary>
+        /// Activated when the Travel... button is clicked.  Shows list picker window.
+        /// </summary>
+        void TravelButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
 
@@ -116,7 +110,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Checks if a remembered location is nearby.  Used to enable the 'Forget' button.
         /// </summary>
-        private bool IsRememberedLocationNearby()
+        bool IsRememberedLocationNearby()
         {
             foreach (LandmarkLocation loc in locations)
             {
@@ -134,7 +128,7 @@ namespace ThePenwickPapers
         /// Triggered when the 'Remember this spot..." button is clicked.
         /// Shows a text input messagebox to allow user to enter a label.
         /// </summary>
-        protected virtual void RememberButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
+        void RememberButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             CloseWindow();
@@ -150,7 +144,7 @@ namespace ThePenwickPapers
         /// <summary>
         /// Gets the resulting input from the text input messagebox and records the current location.
         /// </summary>
-        protected virtual void InputMessageBox_OnGotUserInput(DaggerfallInputMessageBox sender, string input)
+        void InputMessageBox_OnGotUserInput(DaggerfallInputMessageBox sender, string input)
         {
             string name = input.Trim();
             if (name.Length > 0)
@@ -167,7 +161,7 @@ namespace ThePenwickPapers
         /// Triggered when the 'Forget this spot..." button is clicked.
         /// Removes landmark corresponding to current location.
         /// </summary>
-        protected virtual void ForgetButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
+        void ForgetButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ParchmentScratching);
             CloseWindow();
@@ -180,13 +174,15 @@ namespace ThePenwickPapers
         /// Triggered when the 'Exit" button is clicked.
         /// Closes the dialog window.
         /// </summary>
-        protected virtual void ExitButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
+        void ExitButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
             DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             CloseWindow();
         }
 
 
-    }
 
-}
+    } //class LandmarkJournalPopupWindow
+
+
+} //namespace
