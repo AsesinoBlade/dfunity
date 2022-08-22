@@ -18,8 +18,7 @@ namespace Cutscene
             public int frames;
             public int archive;
             public int record;
-            public Material material;
-            public Texture2D texture;
+            public bool hasMaterial;
             public float scale = 1;
         }
 
@@ -33,7 +32,7 @@ namespace Cutscene
         static GameObject staticGameObject;
 
         Details details;
-        int speed = 0;
+        int fps = normalFps;
         float lastUpdateTime;
 
 
@@ -66,7 +65,7 @@ namespace Cutscene
         {
             Details details = GetTextureDetails(archive, record, frame >= 0 ? frame : 0);
 
-            if (details.material == null || frame > details.frames)
+            if (details.hasMaterial == false || frame > details.frames)
             {
                 string msg = string.Format("Failed to find texture archive:{0} record:{1}", archive, record);
                 if (frame >= 0)
@@ -101,11 +100,11 @@ namespace Cutscene
             CreateSprite();
             AdjustSizeAndScale(false);
 
-            speed = normalFps;
+            fps = normalFps;
             if (archive == TextureReader.LightsTextureArchive)
-                speed = lightFps;
+                fps = lightFps;
             else if (archive >= 375 && archive <= 379)
-                speed = spellImpactFps;
+                fps = spellImpactFps;
 
             lastUpdateTime = Time.realtimeSinceStartup;
         }
@@ -121,17 +120,16 @@ namespace Cutscene
 
             details = new Details
             {
-                texture = texture,
-                summary = new BillboardSummary()
+                summary = new BillboardSummary
+                {
+                    AnimatedMaterial = false,
+                    AtlasedMaterial = false
+                }
             };
-
-            details.summary.AnimatedMaterial = false;
-            details.summary.AtlasedMaterial = false;
-            details.scale = 4.0f;
 
             Rect rect = new Rect(0, 0, texture.width, texture.height);
             
-            sprite = Sprite.Create(details.texture, rect, middleOfSprite, basePixelsPerUnit);
+            sprite = Sprite.Create(texture, rect, middleOfSprite, basePixelsPerUnit);
 
             AdjustSizeAndScale(isPaperDoll);
         }
@@ -146,11 +144,13 @@ namespace Cutscene
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, newHeight);
 
             float aspectAdjustment = isPaperDoll ? currentAspectRatio / nativeAspectRatio : nativeAspectRatio / currentAspectRatio;
-            float newWidth = aspectAdjustment * sprite.textureRect.width;
+            float newWidth = sprite.textureRect.width * aspectAdjustment;
             rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, newWidth);
 
-            float scale = GetScale();
-            transform.localScale = Vector3.one * scale;
+            //seems like a confortable default scale
+            details.scale = (float)Screen.width / 320f / 1.2f;
+
+            transform.localScale = Vector3.one * GetScale();
         }
 
 
@@ -172,7 +172,7 @@ namespace Cutscene
                 return;
 
 
-            float updateTime = 1f / speed;
+            float updateTime = 1f / fps;
             if (Time.realtimeSinceStartup >= lastUpdateTime + updateTime)
             {
                 lastUpdateTime = Time.realtimeSinceStartup;
@@ -244,7 +244,6 @@ namespace Cutscene
             if (material)
             {
                 dfUnity.MeshReader.GetBillboardMesh(summary.Rect, archive, record, out _);
-                details.scale = 4f;
                 details.frames = summary.ImportedTextures.FrameCount;
 
                 summary.AtlasedMaterial = false;
@@ -271,7 +270,6 @@ namespace Cutscene
                     if (record < summary.AtlasIndices.Length)
                     {
                         details.frames = summary.AtlasIndices[record].frameCount;
-                        details.scale = 4f;
 
                         summary.AtlasedMaterial = true;
                         summary.AnimatedMaterial = details.frames > 1;
@@ -298,7 +296,6 @@ namespace Cutscene
                 if (material != null)
                 {
                     details.frames = frame + 1;
-                    details.scale = 4f;
 
                     summary.AtlasedMaterial = false;
                     summary.AnimatedMaterial = false;
@@ -308,37 +305,11 @@ namespace Cutscene
             details.archive = archive;
             details.record = record;
 
-
-            details.material = material;
-            details.texture = material.mainTexture as Texture2D;
+            details.hasMaterial = material != null;
             details.summary = summary;
 
             return details;
         }
-
-        /*
-        protected override void OnPopulateMesh(VertexHelper vh)
-        {
-            base.OnPopulateMesh(vh);
-
-            //Am I using this to change perspective during image Y rotation? I forget.
-            ChangeY(vh, 0, 0f);
-            ChangeY(vh, 1, 0f);
-        }
-
-
-        void ChangeY(VertexHelper vh, int index, float offset)
-        {
-            UIVertex vert = UIVertex.simpleVert;
-            vh.PopulateUIVertex(ref vert, index);
-            Vector3 position = vert.position;
-
-            position.y += offset;
-
-            vert.position = position;
-            vh.SetUIVertex(vert, index);
-        }
-        */
 
 
     } //class ModelImage

@@ -135,7 +135,7 @@ namespace Cutscene
         /// </summary>
         public bool HasModel(string id)
         {
-            return models.Exists(x => x.ID.Equals(id));
+            return models.Exists(x => x.ID.Equals(id, StringComparison.OrdinalIgnoreCase));
         }
 
 
