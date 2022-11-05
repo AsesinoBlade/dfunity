@@ -98,24 +98,20 @@ namespace ThePenwickPapers
         {
             chosenVessel = null;
 
-            List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Treasure, 20);
-            foreach (PlayerGPS.NearbyObject obj in nearby)
+            //get all nearby loot, in range of 3 meters
+            List<DaggerfallLoot> nearbyLoot = Utility.GetNearbyLoot(caster.transform.position, 3);
+
+            foreach (DaggerfallLoot corpse in nearbyLoot)
             {
-                if (obj.gameObject)
+                if (CanScour(corpse))
                 {
-                    DaggerfallLoot corpse = obj.gameObject.GetComponent<DaggerfallLoot>();
-                    float distance = Vector3.Distance(caster.transform.position, corpse.transform.position);
-                    if (distance <= 3 && CanScour(corpse))
+                    //must be near enough and looking in the direction of the corpse
+                    Vector3 direction = corpse.transform.position - caster.transform.position;
+                    Vector3 directionXZ = Vector3.ProjectOnPlane(direction, Vector3.up);
+                    if (Vector3.Angle(caster.transform.forward, directionXZ) < 25)
                     {
-                        //must be near enough and looking in the direction of the corpse
-                        Vector3 casterXZ = Vector3.ProjectOnPlane(caster.transform.position, Vector3.up);
-                        Vector3 targetXZ = Vector3.ProjectOnPlane(corpse.transform.position, Vector3.up);
-                        Vector3 direction = targetXZ - casterXZ;
-                        if (Vector3.Angle(caster.transform.forward, direction) < 25)
-                        {
-                            chosenVessel = corpse;
-                            return true;
-                        }
+                        chosenVessel = corpse;
+                        return true;
                     }
                 }
             }

@@ -189,8 +189,14 @@ namespace ThePenwickPapers
         {
             if (!hitInfo.collider)
                 return false;
+            else if (hitInfo.distance > 2.5f)
+                return false;
+            else if (!GameManager.Instance.PlayerMotor.IsCrouching)
+                return false;
+            else if (!Utility.IsItemEquipped(MortarAndPestle.MortarAndPestleTemplateIndex))
+                return false;
 
-            bool hitTerrain = hitInfo.collider is TerrainCollider || hitInfo.collider is MeshCollider;
+            bool hitTerrain = hitInfo.collider.gameObject.layer == 0;
 
             bool hitFriendly = false;
             DaggerfallEntityBehaviour creature = hitInfo.collider.GetComponent<DaggerfallEntityBehaviour>();
@@ -205,11 +211,7 @@ namespace ThePenwickPapers
                 hitFriendly = entity.MobileEnemy.Team == MobileTeams.PlayerAlly || !motor.IsHostile;
             }
 
-            if (hitInfo.distance > 2.5)
-                return false;
-            else if (!hitTerrain && !hitFriendly)
-                return false;
-            else if (!GameManager.Instance.PlayerMotor.IsCrouching)
+            if (!hitTerrain && !hitFriendly)
                 return false;
             else if (hitTerrain && Vector3.Angle(hitInfo.normal, Vector3.up) > 25)
                 return false; //if treating self, must activate floor or table
@@ -232,12 +234,6 @@ namespace ThePenwickPapers
             if (GameManager.Instance.PlayerEnterExit.IsPlayerSubmerged)
             {
                 Utility.AddHUDText(Text.NotWhileSubmerged.Get());
-                return true;
-            }
-
-            if (!Utility.IsItemEquipped(MortarAndPestle.MortarAndPestleTemplateIndex))
-            {
-                Utility.AddHUDText(Text.MustHaveMortarPestle.Get());
                 return true;
             }
 
@@ -533,8 +529,6 @@ namespace ThePenwickPapers
         /// </summary>
         static void ApplyRemedyEffect(Remedy remedy)
         {
-            DaggerfallEntityBehaviour player = GameManager.Instance.PlayerEntityBehaviour;
-
             EffectSettings settings = BaseEntityEffect.DefaultEffectSettings();
 
             int remedyIndex = Remedies.LastIndexOf(remedy);
@@ -542,8 +536,8 @@ namespace ThePenwickPapers
 
             EntityEffectManager manager = patient.GetComponent<EntityEffectManager>();
 
-            EntityEffectBundle bundle = manager.CreateSpellBundle(HerbalRemedy.HerbalEffectKey, ElementTypes.Poison, settings);
-            bundle.CasterEntityBehaviour = player;
+            EntityEffectBundle bundle = CreateBundle(HerbalRemedy.HerbalEffectKey, settings);
+
             AssignBundleFlags flags = AssignBundleFlags.BypassChance | AssignBundleFlags.BypassSavingThrows;
 
             manager.AssignBundle(bundle, flags);
@@ -620,8 +614,7 @@ namespace ThePenwickPapers
             
             EntityEffectManager manager = player.GetComponent<EntityEffectManager>();
 
-            EntityEffectBundle bundle = manager.CreateSpellBundle(Envenomed.EnvenomedEffectKey, ElementTypes.None, settings);
-            bundle.CasterEntityBehaviour = player;
+            EntityEffectBundle bundle = CreateBundle(Envenomed.EnvenomedEffectKey, settings);
             
             AssignBundleFlags flags = AssignBundleFlags.BypassChance | AssignBundleFlags.BypassSavingThrows;
 
@@ -640,13 +633,17 @@ namespace ThePenwickPapers
             EntityEffectManager manager = player.GetComponent<EntityEffectManager>();
 
             foreach (LiveEffectBundle bundle in manager.EffectBundles)
+            {
                 foreach (IEntityEffect effect in bundle.liveEffects)
+                {
                     if (effect.Key.Equals(Envenomed.EnvenomedEffectKey))
                     {
                         Envenomed envenomed = effect as Envenomed;
                         envenomed.ExitState();
                         return;
                     }
+                }
+            }
         }
 
 
@@ -719,6 +716,23 @@ namespace ThePenwickPapers
             }
 
         }
+
+        /// <summary>
+        /// Creates a non-spell bundle.
+        /// </summary>
+        static EntityEffectBundle CreateBundle(string effectKey, EffectSettings? effectSettings = null)
+        {
+            EffectBundleSettings settings = new EffectBundleSettings()
+            {
+                Version = EntityEffectBroker.CurrentSpellVersion,
+                BundleType = BundleTypes.None,
+                ElementType = ElementTypes.None,
+                Effects = new EffectEntry[] { new EffectEntry(effectKey, effectSettings.Value) },
+            };
+
+            return new EntityEffectBundle(settings, GameManager.Instance.PlayerEntityBehaviour);
+        }
+
 
 
         /// <summary>
@@ -807,6 +821,14 @@ namespace ThePenwickPapers
         public override string LongName
         {
             get { return ItemName; }
+        }
+
+
+        public override bool UseItem(ItemCollection collection)
+        {
+            Utility.MessageBox(Text.MortarAndPestleUsage.Get());
+
+            return true;
         }
 
 

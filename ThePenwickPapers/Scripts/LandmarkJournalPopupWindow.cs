@@ -96,13 +96,13 @@ namespace ThePenwickPapers
         /// </summary>
         void TravelButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
-            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
-
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
 
             LandmarkJournalListPickerWindow locationPicker = new LandmarkJournalListPickerWindow(locations);
 
             DaggerfallUI.Instance.UserInterfaceManager.PushWindow(locationPicker);
+
+            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
         }
 
 
@@ -130,7 +130,6 @@ namespace ThePenwickPapers
         /// </summary>
         void RememberButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
-            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             CloseWindow();
 
             DaggerfallInputMessageBox inputMessageBox = new DaggerfallInputMessageBox(DaggerfallUI.UIManager, this);
@@ -138,6 +137,8 @@ namespace ThePenwickPapers
             inputMessageBox.InputDistanceX = 10;
             inputMessageBox.OnGotUserInput += InputMessageBox_OnGotUserInput;
             inputMessageBox.Show();
+
+            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
         }
 
 
@@ -163,10 +164,11 @@ namespace ThePenwickPapers
         /// </summary>
         void ForgetButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
-            DaggerfallUI.Instance.PlayOneShot(SoundClips.ParchmentScratching);
             CloseWindow();
 
             locations.RemoveAll(loc => GameManager.Instance.PlayerMotor.DistanceToPlayer(loc.Position) < 5);
+
+            DaggerfallUI.Instance.PlayOneShot(SoundClips.ParchmentScratching);
         }
 
 
@@ -176,8 +178,8 @@ namespace ThePenwickPapers
         /// </summary>
         void ExitButton_OnMouseClick(BaseScreenComponent sender, Vector2 position)
         {
-            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
             CloseWindow();
+            DaggerfallUI.Instance.PlayOneShot(SoundClips.ButtonClick);
         }
 
 

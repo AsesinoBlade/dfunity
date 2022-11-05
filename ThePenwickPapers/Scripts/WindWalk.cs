@@ -11,7 +11,7 @@ using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Formulas;
 using DaggerfallWorkshop;
-using DaggerfallWorkshop.Utility;
+
 
 namespace ThePenwickPapers
 {
@@ -245,7 +245,7 @@ namespace ThePenwickPapers
 
                 //temporarily adding another audio source for looping sound
                 windAudioObject = new GameObject();
-                windAudioObject.transform.SetParent(GameObjectHelper.GetBestParent());
+                windAudioObject.transform.SetParent(player.transform);
                 DaggerfallAudioSource dfAudio = windAudioObject.AddComponent<DaggerfallAudioSource>();
                 dfAudio.AudioSource.volume = DaggerfallUnity.Settings.SoundVolume;
                 dfAudio.AudioSource.loop = true;
@@ -277,11 +277,9 @@ namespace ThePenwickPapers
             Vector3 bottom = controller.transform.position;
             bottom.y -= controller.height / 2f;
 
-            int layerMask = ~(1 << controller.gameObject.layer);
-
             float distance = velocity.magnitude;
 
-            if (!Physics.CapsuleCast(top, bottom, controller.radius, velocity.normalized, out RaycastHit hitInfo, distance, layerMask))
+            if (!Physics.CapsuleCast(top, bottom, controller.radius, velocity.normalized, out RaycastHit hitInfo, distance))
                 return;
 
             Vector3 normal = hitInfo.normal;

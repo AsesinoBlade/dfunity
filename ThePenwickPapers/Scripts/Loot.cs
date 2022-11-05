@@ -9,6 +9,7 @@ using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Game.Items;
 using DaggerfallWorkshop.Game.Utility;
 using DaggerfallWorkshop.Game;
+using DaggerfallConnect.FallExe;
 
 namespace ThePenwickPapers
 {
@@ -33,17 +34,27 @@ namespace ThePenwickPapers
             switch (mobileType)
             {
                 case MobileTypes.Assassin:
+                    AddLightingItems(lootArgs.Items);
+                    AddPotionOfSeekingItems(12 + entity.Level / 2, lootArgs.Items);
+                    break;
+
                 case MobileTypes.Burglar:
                     AddLightingItems(lootArgs.Items);
                     AddPotionOfSeekingItems(12 + entity.Level / 2, lootArgs.Items);
+                    AddGrapplingHook(5 + entity.Level / 2, lootArgs.Items);
                     break;
 
                 case MobileTypes.Thief:
                     AddLightingItems(lootArgs.Items);
                     AddPotionOfSeekingItems(entity.Level / 2, lootArgs.Items);
+                    AddGrapplingHook(3 + entity.Level / 2, lootArgs.Items);
                     break;
 
                 case MobileTypes.Acrobat:
+                    AddLightingItems(lootArgs.Items);
+                    AddGrapplingHook(3 + entity.Level / 2, lootArgs.Items);
+                    break;
+
                 case MobileTypes.Rogue:
                 case MobileTypes.Nightblade:
                     AddLightingItems(lootArgs.Items);
@@ -246,7 +257,7 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Chance of adding some arrows
+        /// Chance of adding some arrows to loot ItemCollection
         /// </summary>
         static void AddArrows(ItemCollection items)
         {
@@ -259,9 +270,26 @@ namespace ThePenwickPapers
         }
 
 
+        /// <summary>
+        /// Chance of adding grappling hook to loot ItemCollection
+        /// </summary>
+        static void AddGrapplingHook(int chance, ItemCollection items)
+        {
+            //First check if the HookAndRope item is registered
+            ItemTemplate template = DaggerfallUnity.Instance.ItemHelper.GetItemTemplate(GrapplingHook.HookAndRopeItemIndex);
+            if (template.name != null)
+            {
+                if (Dice100.SuccessRoll(chance))
+                {
+                    DaggerfallUnityItem item = ItemBuilder.CreateItem(ItemGroups.MiscItems, GrapplingHook.HookAndRopeItemIndex);
+                    items.AddItem(item);
+                }
+            }
+        }
 
 
-    } //class EnemyLoot
+
+    } //class Loot
 
 
 

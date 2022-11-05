@@ -20,6 +20,7 @@ using static DaggerfallConnect.Arena2.FactionFile.GuildGroups;
 using static DaggerfallConnect.DFLocation.BuildingTypes;
 using DaggerfallWorkshop.Game.Weather;
 
+
 namespace ThePenwickPapers
 {
 
@@ -472,12 +473,14 @@ namespace ThePenwickPapers
             else if (npc.Social == Underworld && npc.Guild == DarkBrotherHood)
             {
                 //Dark Brotherhood guild
-                return npc.IsLeafFaction;
+                bool isMember = GameManager.Instance.GuildManager.HasJoined(FactionFile.GuildGroups.DarkBrotherHood);
+                return npc.IsLeafFaction && isMember;
             }
             else if (npc.Social == Underworld && npc.Guild == GeneralPopulace)
             {
                 //Thieves guild
-                return npc.IsLeafFaction;
+                bool isMember = GameManager.Instance.GuildManager.HasJoined(FactionFile.GuildGroups.GeneralPopulace);
+                return npc.IsLeafFaction && isMember;
             }
             else if (npc.Social == GuildMembers && npc.Guild == HolyOrder)
             {
@@ -839,7 +842,13 @@ namespace ThePenwickPapers
 
             var texture = (npc.TextureArchive, npc.TextureRecord);
 
-            if (npc.FactionID == FactionFile.FactionIDs.The_Blades)
+            if (TextureReader.IsChildNPCTexture(npc.TextureArchive, npc.TextureRecord) || children.Contains(texture))
+            {
+                //putting this check first to prevent undesirable text descriptions from triggering when
+                //child textures are shown.
+                descriptors = childDescriptors;
+            }
+            else if (npc.FactionID == FactionFile.FactionIDs.The_Blades)
             {
                 descriptors = bladesDescriptors;
             }
@@ -850,11 +859,7 @@ namespace ThePenwickPapers
             }
             else if (npc.Social == Commoners && npc.Guild == GeneralPopulace)
             {
-                if (npc.IsChild || children.Contains(texture))
-                {
-                    descriptors = childDescriptors;
-                }
-                else if (sexyCommoners.Contains(texture))
+                if (sexyCommoners.Contains(texture))
                 {
                     descriptors = npc.Gender == Genders.Female ? prostituteDescriptors : gigoloDescriptors;
                 }
@@ -873,6 +878,10 @@ namespace ThePenwickPapers
                 else if (poorCommoners.Contains(texture))
                 {
                     descriptors = poorDescriptors;
+                }
+                else if (bookishCommoners.Contains(texture))
+                {
+                    descriptors = scholarDescriptors;
                 }
                 else if (GameManager.Instance.PlayerEnterExit.IsPlayerInside)
                 {
@@ -1067,6 +1076,11 @@ namespace ThePenwickPapers
             (184, 31), (186, 30), (186, 31), (186, 32)
         };
 
+        static readonly HashSet<(int, int)> bookishCommoners = new HashSet<(int, int)>()
+        {
+            (182, 24), (184, 2), (186, 25), (334, 7)
+        };
+
         static readonly HashSet<(int, int)> children = new HashSet<(int, int)>()
         {
             (182, 43), (182, 52), (182, 53),
@@ -1159,7 +1173,7 @@ namespace ThePenwickPapers
         static readonly Text[] merchantDescriptors = new Text[]
         {
             //in order according to shop quality
-            Text.Confused, Text.Exhausted, Text.Harried, Text.Busy, Text.Stoic, Text.Organized,
+            Text.Befuddled, Text.Confused, Text.Mirthless, Text.Harried, Text.Busy, Text.Organized,
             Text.Miserly, Text.Shrewd, Text.Canny, Text.Savvy
         };
         static readonly Text[] bardDescriptors = new Text[]

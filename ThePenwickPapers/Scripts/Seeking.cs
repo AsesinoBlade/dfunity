@@ -235,8 +235,10 @@ namespace ThePenwickPapers
             {
                 bool exists = false;
                 foreach (QuestResourceBehaviour questBehavior in questItems)
+                {
                     if (questBehavior == target)
                         exists = true;
+                }
 
                 Foe foe = target.TargetResource as Foe;
                 if (!exists)

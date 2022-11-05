@@ -173,12 +173,9 @@ namespace ThePenwickPapers
             List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Enemy, range);
             foreach (PlayerGPS.NearbyObject no in nearby)
             {
-                if (no.gameObject && no.gameObject.activeInHierarchy)
-                {
-                    DaggerfallEntityBehaviour entity = no.gameObject.GetComponent<DaggerfallEntityBehaviour>();
-                    if (entity)
-                        entities.Add(entity);
-                }
+                DaggerfallEntityBehaviour behaviour = no.gameObject.GetComponent<DaggerfallEntityBehaviour>();
+                if (behaviour)
+                    entities.Add(behaviour);
             }
 
             return entities;
@@ -192,11 +189,11 @@ namespace ThePenwickPapers
         {
             List<DaggerfallEntityBehaviour> near = new List<DaggerfallEntityBehaviour>();
 
-            foreach (DaggerfallEntityBehaviour entity in GetNearbyEntities(50))
+            foreach (DaggerfallEntityBehaviour behaviour in GetNearbyEntities(50))
             {
-                float distance = Vector3.Distance(location, entity.transform.position);
+                float distance = Vector3.Distance(location, behaviour.transform.position);
                 if (distance <= range)
-                    near.Add(entity);
+                    near.Add(behaviour);
             }
 
             return near;
@@ -204,23 +201,20 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Gets list of loot (bodies or treasure piles) within range of specified location. Max 50 meters from player.
+        /// Gets list of loot (bodies or treasure piles) within range of specified location. Max 30 meters from player.
         /// </summary>
         public static List<DaggerfallLoot> GetNearbyLoot(Vector3 location, float range)
         {
             List<DaggerfallLoot> nearbyLoot = new List<DaggerfallLoot>();
 
-            List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Treasure, 50);
+            List<PlayerGPS.NearbyObject> nearby = GameManager.Instance.PlayerGPS.GetNearbyObjects(PlayerGPS.NearbyObjectFlags.Treasure, 30);
             foreach (PlayerGPS.NearbyObject no in nearby)
             {
-                if (no.gameObject && no.gameObject.activeInHierarchy)
+                DaggerfallLoot loot = no.gameObject.GetComponent<DaggerfallLoot>();
+                float distance = Vector3.Distance(location, loot.transform.position);
+                if (distance <= range)
                 {
-                    DaggerfallLoot loot = no.gameObject.GetComponent<DaggerfallLoot>();
-                    float distance = Vector3.Distance(location, loot.transform.position);
-                    if (distance <= range)
-                    {
-                        nearbyLoot.Add(loot);
-                    }
+                    nearbyLoot.Add(loot);
                 }
             }
 
@@ -321,6 +315,20 @@ namespace ThePenwickPapers
                 return true;
 
             return false;
+        }
+
+
+        /// <summary>
+        /// Checks if player character has a free hand available.
+        /// Returns true if weapons are sheathed or at least one hand is empty (hand slot not equipped).
+        /// </summary>
+        public static bool HasFreeHand()
+        {
+            if (GameManager.Instance.WeaponManager.Sheathed)
+                return true;
+
+            ItemEquipTable equipTable = GameManager.Instance.PlayerEntity.ItemEquipTable;
+            return equipTable.IsSlotOpen(EquipSlots.LeftHand) || equipTable.IsSlotOpen(EquipSlots.RightHand);
         }
 
 

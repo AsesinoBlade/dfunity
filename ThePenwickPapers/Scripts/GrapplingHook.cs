@@ -16,8 +16,7 @@ namespace ThePenwickPapers
 
     public static class GrapplingHook
     {
-        const int hookAndRopeItemIndex = 544; //value from thiefoverhaul/skulduggery mod
-
+        public const int HookAndRopeItemIndex = 544; //value from thiefoverhaul/skulduggery mod
         public const string PenwickHookName = "Penwick Hook";
         public const string PenwickRopeName = "Penwick Rope";
         public const string PenwickFlyingHookName = "Penwick Flying Hook";
@@ -50,7 +49,7 @@ namespace ThePenwickPapers
                 return false;  //already throwing, spellcasting or attacking, skip
 
             //check for equipped hook and rope item, from Skulduggery mod
-            DaggerfallUnityItem hookAndRopeItem = Utility.GetEquippedItem(hookAndRopeItemIndex);
+            DaggerfallUnityItem hookAndRopeItem = Utility.GetEquippedItem(HookAndRopeItemIndex);
             if (hookAndRopeItem == null)
                 return false;
 

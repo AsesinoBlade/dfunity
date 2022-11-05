@@ -283,20 +283,17 @@ namespace ThePenwickPapers
             if (InputManager.Instance.ActionStarted(InputManager.Actions.ActivateCenterObject))
             {
                 if (GameManager.Instance.PlayerEffectManager.HasReadySpell)
-                {
                     return;
-                }
                 else if (GameManager.Instance.PlayerMouseLook.cursorActive)
-                {
                     return;
-                }
 
                 Camera camera = GameManager.Instance.MainCamera;
-                int playerLayerMask = ~(1 << LayerMask.NameToLayer("Player"));
 
-                Ray ray = new Ray(camera.transform.position, camera.transform.forward);
+                Ray ray = new Ray(camera.transform.position + camera.transform.forward * 0.3f, camera.transform.forward);
                 float maxDistance = 16;
-                bool hitSomething = Physics.Raycast(ray, out RaycastHit hitInfo, maxDistance, playerLayerMask);
+                //int layerMask = ~LayerMask.GetMask("Player");
+                //bool hitSomething = Physics.Raycast(ray, out RaycastHit hitInfo, maxDistance, layerMask);
+                bool hitSomething = Physics.Raycast(ray, out RaycastHit hitInfo, maxDistance);
 
                 if (hitSomething)
                 {
@@ -502,6 +499,14 @@ namespace ThePenwickPapers
 
             if (!success)
                 throw new Exception("Missing texture asset");
+
+            //Since we are manually loading textures, set the filter mode to the same used by the rest of the system
+            FilterMode filterMode = DaggerfallUnity.Instance.MaterialReader.MainFilterMode;
+            GrapplingHookTexture.filterMode = filterMode;
+            RopeTexture.filterMode = filterMode;
+            GrapplingHookIdleTexture.filterMode = filterMode;
+            GrapplingHookFlyingTexture.filterMode = filterMode;
+            GrapplingHookHandTexture.filterMode = filterMode;
         }
 
 
@@ -653,7 +658,7 @@ namespace ThePenwickPapers
 
 
         /// <summary>
-        /// Event handler triggered when player exits a dungeon.
+        /// Event handler triggered when player enters/exits a dungeon or building.
         /// </summary>
         void PlayerEnterExit_HandleOnPreTransition(PlayerEnterExit.TransitionEventArgs args)
         {
@@ -661,7 +666,7 @@ namespace ThePenwickPapers
             Persistent.DungeonLocations.Clear();
 
             //Enemies in dungeons might have slightly different loot (like torches)
-            Loot.InDungeon = args.TransitionType == PlayerEnterExit.TransitionType.ToDungeonInterior;
+            Loot.InDungeon = (args.TransitionType == PlayerEnterExit.TransitionType.ToDungeonInterior);
         }
 
 

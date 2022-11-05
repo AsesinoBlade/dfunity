@@ -271,8 +271,8 @@ namespace ThePenwickPapers
 
             bool crimeWave = regionFlags[(int)PlayerEntity.RegionDataFlags.CrimeWave];
 
-            float crimeChance = (distance / 100) * (crimeWave ? 12 : 6);
-            crimeChance = Mathf.Clamp(crimeChance, 3, 40);
+            float crimeChance = (distance / 100) * (crimeWave ? 8 : 4);
+            crimeChance = Mathf.Clamp(crimeChance, 3, 30);
 
             if (Random.Range(0.0f, 100.0f) < crimeChance)
             {

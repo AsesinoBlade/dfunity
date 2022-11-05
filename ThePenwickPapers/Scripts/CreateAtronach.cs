@@ -211,8 +211,6 @@ namespace ThePenwickPapers
         /// </summary>
         bool TryGetSpawnLocation(out Vector3 location)
         {
-            int casterLayerMask = ~(1 << Caster.gameObject.layer);
-
             //try to find reasonable spawn location in front of the caster
             foreach (float distance in scanDistances)
             {
@@ -225,7 +223,7 @@ namespace ThePenwickPapers
 
                         //shouldn't be anything between the caster and spawn point
                         Ray ray = new Ray(Caster.transform.position, direction);
-                        if (Physics.Raycast(ray, out RaycastHit hit, distance, casterLayerMask))
+                        if (Physics.Raycast(ray, out RaycastHit hit, distance))
                         {
                             continue;
                         }

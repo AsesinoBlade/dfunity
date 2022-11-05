@@ -1,9 +1,9 @@
 {
     "ModTitle": "The-Penwick-Papers",
-    "ModVersion": "0.83",
+    "ModVersion": "0.86",
     "ModAuthor": "DunnyOfPenwick",
     "ContactInfo": "http://dfworkshop.net",
-    "DFUnity_Version": "0.14.3",
+    "DFUnity_Version": "0.14.4",
     "ModDescription": "A hodgepodge of useful features, spells, and items",
     "GUID": "c7a201b3-3b41-4c44-a5c6-f86c77cca630",
     "Files": [

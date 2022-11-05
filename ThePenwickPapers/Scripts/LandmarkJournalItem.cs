@@ -143,10 +143,10 @@ namespace ThePenwickPapers
         {
             DaggerfallUI.Instance.UserInterfaceManager.PopWindow();
 
-            DaggerfallUI.Instance.PlayOneShot(SoundClips.PageTurn);
-
             LandmarkJournalPopupWindow landmarkJournalDialog = new LandmarkJournalPopupWindow(DaggerfallUI.UIManager, locations);
             DaggerfallUI.Instance.UserInterfaceManager.PushWindow(landmarkJournalDialog);
+
+            DaggerfallUI.Instance.PlayOneShot(SoundClips.PageTurn);
         }
 
 

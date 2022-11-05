@@ -69,7 +69,8 @@ namespace ThePenwickPapers
 
             if (mode == PlayerActivateModes.Steal)
             {
-                bool isTerrain = hitInfo.collider is TerrainCollider || hitInfo.collider is MeshCollider;
+                bool isTerrain = hitInfo.collider.gameObject.layer == 0;
+
                 DaggerfallActionDoor door = hitInfo.collider.GetComponent<DaggerfallActionDoor>();
 
                 if (EnableBlinding && creature && hitInfo.distance <= blindRange)
@@ -77,7 +78,9 @@ namespace ThePenwickPapers
                     bool isFacing = IsFacingTrickster(creature, GameManager.Instance.PlayerEntityBehaviour);
                     if (isFacing)
                     {
-                        if (!isShowingHandAnimation)
+                        if (!Utility.HasFreeHand())
+                            Utility.AddHUDText(Text.NoFreeHand.Get());
+                        else if (!isShowingHandAnimation)
                             AttemptBlindByPlayer(creature);
 
                         return true;
@@ -94,7 +97,9 @@ namespace ThePenwickPapers
                 }
                 else if (EnableDiversion && isTerrain && hitInfo.distance > 5)
                 {
-                    if (!isShowingHandAnimation)
+                    if (!Utility.HasFreeHand())
+                        Utility.AddHUDText(Text.NoFreeHand.Get());
+                    else if (!isShowingHandAnimation)
                         AttemptDiversion(hitInfo);
 
                     return true;
@@ -110,10 +115,15 @@ namespace ThePenwickPapers
                     return true;
                 }
             }
-            else if (EnablePeep && mode == PlayerActivateModes.Info && hitInfo.distance <= peepRange)
+            else if (EnablePeep && mode == PlayerActivateModes.Info)
             {
                 DaggerfallActionDoor door = hitInfo.collider.GetComponent<DaggerfallActionDoor>();
-                if (door && door.IsClosed)
+
+                //Determine XZ distance from player to door, how close is player to door
+                Vector3 path = hitInfo.point - GameManager.Instance.PlayerController.transform.position;
+                float distanceXZ = Vector3.ProjectOnPlane(path, Vector3.up).magnitude;
+
+                if (door && door.IsClosed && distanceXZ <= peepRange)
                 {
                     if (!peeping)
                         ThePenwickPapersMod.Instance.StartCoroutine(PeepDoor(hitInfo, door));
@@ -139,7 +149,7 @@ namespace ThePenwickPapers
             if (Dice100.FailedRoll(1))
                 return;
 
-            if (Time.time < lastEnemyBlindAttempt + 25)
+            if (Time.time < lastEnemyBlindAttempt + 30)
                 return;
 
             List<DaggerfallEntityBehaviour> enemyBehaviours = Utility.GetNearbyEntities();
@@ -243,13 +253,10 @@ namespace ThePenwickPapers
             else if (Utility.IsBlind(playerBehaviour))
                 return;
 
-            float rechargeTime = (140 - playerEntity.Stats.LiveLuck) / 7.0f;
+            float rechargeTime = (140 - playerEntity.Stats.LiveLuck) / 6.0f;
 
             if (Time.time < lastPlayerBlindAttempt + rechargeTime)
-            {
-                Utility.AddHUDText(Text.NotYet.Get());
                 return;
-            }
 
             lastPlayerBlindAttempt = Time.time;
 
@@ -313,7 +320,7 @@ namespace ThePenwickPapers
             int defense = streetwise;
             defense += victim.Entity.Stats.LiveAgility / 2;
 
-            int chance = Mathf.Clamp(50 + offense - defense, 5, 95);
+            int chance = Mathf.Clamp(40 + offense - defense, 5, 95);
 
             if (Dice100.SuccessRoll(chance))
             {
@@ -354,9 +361,7 @@ namespace ThePenwickPapers
 
                 EnemyBlood blood = victim.GetComponent<EnemyBlood>();
                 if (blood)
-                {
                     blood.ShowBloodSplash(2, impactPosition);
-                }
             }
 
             //Finally, induce an incumbent blinding effect
@@ -440,6 +445,18 @@ namespace ThePenwickPapers
             if (pebbles == null)
                 return;
 
+            //Try to prevent accidental diversion when really attempting blind
+            Transform cameraTransform = GameManager.Instance.MainCamera.transform;
+            Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+            LayerMask layerMask = LayerMask.GetMask("Enemies");
+            if (Physics.SphereCast(ray, 0.4f, out RaycastHit checkHit, blindRange, layerMask))
+            {
+                //If an unblinded enemy is in front of us, abort diversion
+                DaggerfallEntityBehaviour behaviour = checkHit.collider.GetComponent<DaggerfallEntityBehaviour>();
+                if (behaviour && !Utility.IsBlind(behaviour))
+                    return;
+            }
+
             if (pebbles.currentCondition - pebblesConditionReduction < 1)
             {
                 Utility.AddHUDText(Text.OutOfPebbles.Get());
@@ -503,7 +520,8 @@ namespace ThePenwickPapers
             yield return new WaitForSeconds(4);
 
             //finally, destroy the temporary diversion object
-            GameObject.Destroy(diversion.gameObject);
+            if (diversion)
+                GameObject.Destroy(diversion.gameObject);
         }
 
 
@@ -584,48 +602,48 @@ namespace ThePenwickPapers
             defense += enemy.Stats.GetLiveStatValue(DFCareer.Stats.Agility) / 2;
 
             if (victim.GetComponent<DaggerfallEnemy>().MobileUnit.IsAttacking())
-                defense -= 30;
+                defense -= 20;
 
             if (!IsFacingTrickster(victim, GameManager.Instance.PlayerEntityBehaviour))
-                defense = 0;
+                defense -= 30;
             else if (Utility.IsBlind(victim))
-                defense = 0;
+                defense -= 20;
             else if (victim.Entity.IsParalyzed)
-                defense = 0;
+                defense -= 40;
 
-            int hitChance = Mathf.Clamp(50 + offense - defense, 10, 90);
+            int calculatedHitChance = 50 + offense - defense;
+
+            int hitChance = Mathf.Clamp(calculatedHitChance, 10, 90);
 
             if (Dice100.FailedRoll(hitChance))
                 return;
 
-            DaggerfallAudioSource dfAudio = victim.GetComponent<DaggerfallAudioSource>();
-            dfAudio.PlayOneShot(SoundClips.Hit2);
-
             Vector3 playerVelocity = playerController.velocity;
             Vector3 direction = (victim.transform.position - playerMotor.transform.position).normalized;
-            float effective = Vector3.Project(playerVelocity, direction).magnitude;
-
-            if (hitChance > 100)
-                effective *= 1.3f;
+            float power = Vector3.Project(playerVelocity, direction).magnitude;
 
             float playerStrength = player.Stats.GetLiveStatValue(DFCareer.Stats.Strength);
-            effective += playerStrength / 10; 
+            power += playerStrength / 10;
+
+            if (calculatedHitChance > 100)
+                power *= 1.3f;
 
             int creatureWeight = enemy.GetWeightInClassicUnits();
-            if (enemy.EntityType == EntityTypes.EnemyClass)
-                creatureWeight = 500;
             if (creatureWeight == 0)
                 return; //ghosts etc.
 
-            effective *= 800.0f / creatureWeight;
+            power *= 700.0f / creatureWeight;
 
-            effective = Mathf.Clamp(effective, 0, 50);
+            power = Mathf.Clamp(power, 0, 50);
 
             if (playerMotor.IsSwimming)
-                effective /= 4;
+                power /= 3;
+
+            DaggerfallAudioSource dfAudio = victim.GetComponent<DaggerfallAudioSource>();
+            dfAudio.PlayOneShot(SoundClips.Hit2);
 
             EnemyMotor motor = victim.GetComponent<EnemyMotor>();
-            motor.KnockbackSpeed += effective;
+            motor.KnockbackSpeed += power;
             motor.KnockbackDirection = direction;
 
             //critical strike has a large advancement multiplier (8)

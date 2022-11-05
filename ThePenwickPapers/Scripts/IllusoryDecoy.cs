@@ -31,7 +31,6 @@ namespace ThePenwickPapers
         bool atTargetDestination = false;
         bool firstRound = true;
         int magnitude;
-        DaggerfallMissile lastMissileChecked;
         float timeOfLastAgitate;
 
 
@@ -137,6 +136,10 @@ namespace ThePenwickPapers
                 AgitateNearbyFoes();
                 CheckCasterProximity();
                 CheckForMissiles();
+            }
+            else
+            {
+                End();
             }
         }
 
@@ -269,7 +272,7 @@ namespace ThePenwickPapers
                     continue;
                 else if (Caster.EntityType == EntityTypes.Player && behaviour.Entity.Team == MobileTeams.PlayerAlly)
                     continue;
-                else if (Caster.EntityType != EntityTypes.Player && behaviour.Entity.Team == Caster.Entity.Team)
+                else if (behaviour.Entity.Team == Caster.Entity.Team)
                     continue;
                 else if (behaviour.Entity.Team == MobileTeams.Undead)
                     continue;
@@ -340,7 +343,7 @@ namespace ThePenwickPapers
 
             if (!casterIsConcealed)
             {
-                //manually check proximity to caster, dispel illusion if caster gets too close
+                //manually check proximity to caster, dispel the illusion if unconcealed caster gets too close
                 float distance = Vector3.Distance(Caster.transform.position, decoy.transform.position);
                 if (distance < 0.8f - magnitude / 250f)
                 {
@@ -356,55 +359,57 @@ namespace ThePenwickPapers
         /// </summary>
         void CheckForMissiles()
         {
-            if (decoy == null) //checking again in case caster just bumped into decoy while missiles were in flight 
-            {
+            if (decoy == null)
                 return;
-            }
 
-            DaggerfallMissile[] missiles = GameObject.FindObjectsOfType<DaggerfallMissile>();
+            int missileLayerMask = LayerMask.GetMask("SpellMissiles");
 
-            foreach (DaggerfallMissile missile in missiles)
+            //Looking for any close-by missiles...
+            Collider[] colliders = Physics.OverlapSphere(decoy.transform.position, 5, missileLayerMask);
+
+            foreach (Collider collider in colliders)
             {
-                if (missile.transform.position == Vector3.zero && missile != lastMissileChecked)
-                {
-                    //missile was just created, set flag to ignore collisions with decoy
-                    SetIgnoreMissileCollisions(missile);
-                    Dodge(missile);
+                DaggerfallMissile missile = collider.GetComponent<DaggerfallMissile>();
 
-                    //There's a chance this code could get called twice without missile moving
-                    //We don't want to make 2 dodges for the same missile
-                    lastMissileChecked = missile;
-                }
-                else
+                if (missile == null) //arrow collider might be a child object, check parent
+                    missile = collider.GetComponentInParent<DaggerfallMissile>();
+                
+                if (missile)
                 {
-                    //attempt to manually check for missile collisions
-                    float distance = Vector3.Distance(missile.transform.position, decoy.transform.position);
-                    if (distance < 0.35f)
-                    {
-                        End(); //destroy the decoy
-                    }
+                    //SetIgnoreMissileCollisions will return false if collisions are already being ignored
+                    if (SetIgnoreMissileCollisions(missile))
+                        Dodge(missile);
+
+                    MissileDecoyTracker missileTracker = missile.GetComponent<MissileDecoyTracker>();
+                    if (missileTracker == null)
+                        missileTracker = missile.gameObject.AddComponent<MissileDecoyTracker>();
+                    
+                    missileTracker.AddDecoy(decoy);
                 }
             }
+
         }
+
 
 
         /// <summary>
         /// Prevent missiles from colliding with the decoy.
+        /// Returns false if the collisions are already being ignored.
         /// </summary>
-        void SetIgnoreMissileCollisions(DaggerfallMissile missile)
+        bool SetIgnoreMissileCollisions(DaggerfallMissile missile)
         {
-            SphereCollider missileCollider = missile.GetComponent<SphereCollider>();
+            Collider collider = missile.GetComponent<Collider>();
             CharacterController decoyController = decoy.GetComponent<CharacterController>();
 
-            //Both spell missiles and arrows have a SphereCollider
-            Physics.IgnoreCollision(missileCollider, decoyController);
+            //If already ignoring collisions with this missile, just skip it
+            if (Physics.GetIgnoreCollision(collider, decoyController))
+                return false;
 
-            MeshCollider meshCollider = missile.GetComponent<MeshCollider>();
-            if (meshCollider)
-            {
-                //must be an arrow
-                Physics.IgnoreCollision(meshCollider, decoyController);
-            }
+            Collider[] colliders = missile.GetComponentsInChildren<Collider>();
+            for (int i = 0; i < colliders.Length; ++i)
+                Physics.IgnoreCollision(colliders[i], decoyController);
+
+            return true;
         }
 
 
@@ -414,21 +419,15 @@ namespace ThePenwickPapers
         void Dodge(DaggerfallMissile missile)
         {
             if (missile.Caster == null)
-            {
                 return;
-            }
 
             EnemySenses senses = missile.Caster.GetComponent<EnemySenses>();
             if (senses == null || senses.Target != decoy)
-            {
                 return;
-            }
 
             Vector3 casterPos = missile.Caster.transform.position;
             if (Vector3.Distance(casterPos, decoy.transform.position) < 5)
-            {
                 return;
-            }
 
             //attempt to dodge a little to the side
             Vector3 targetDirection = decoy.transform.position - casterPos;
@@ -521,12 +520,10 @@ namespace ThePenwickPapers
         {
             newLocation = Vector3.zero;
 
-            int casterLayerMask = ~(1 << Caster.gameObject.layer);
-
             //shouldn't be anything in the way
             Ray ray = new Ray(currentPosition, direction);
 
-            if (Physics.Raycast(ray, distance, casterLayerMask))
+            if (Physics.Raycast(ray, distance))
             {
                 return false;
             }
@@ -557,9 +554,7 @@ namespace ThePenwickPapers
 
             const float maxDistance = 50f;
 
-            int casterLayerMask = ~(1 << Caster.gameObject.layer);
-
-            if (Physics.Raycast(position, forward, out RaycastHit hit, maxDistance, casterLayerMask))
+            if (Physics.Raycast(position, forward, out RaycastHit hit, maxDistance))
             {
                 return hit.point - forward * 0.02f;
             }
@@ -851,8 +846,39 @@ namespace ThePenwickPapers
         }
 
 
+        class MissileDecoyTracker : MonoBehaviour
+        {
+            readonly List<DaggerfallEntityBehaviour> decoys = new List<DaggerfallEntityBehaviour>();
+
+            public void AddDecoy(DaggerfallEntityBehaviour decoy)
+            {
+                if (!decoys.Contains(decoy))
+                    decoys.Add(decoy);
+            }
+
+            private void Update()
+            {
+                //Remove destroyed decoys from the list
+                decoys.RemoveAll(x => x == null);
+
+                foreach (DaggerfallEntityBehaviour decoy in decoys)
+                {
+                    float distance = Vector3.Distance(transform.position, decoy.transform.position);
+
+                    //If the missile is close enough to the decoy, count it as a hit and destroy the decoy
+                    if (distance < 0.40f)
+                    {
+                        decoy.Entity.SetHealth(0); //'kill' the decoy
+                    }
+                }
+
+            }
+
+        } //class MissileDecoyTracker
+
 
     } //class IllusoryDecoy
+
 
 
 } //namespace

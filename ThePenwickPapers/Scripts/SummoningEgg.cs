@@ -6,6 +6,7 @@ using System.Collections;
 using UnityEngine;
 using DaggerfallWorkshop;
 using DaggerfallWorkshop.Game;
+using DaggerfallWorkshop.Utility;
 
 namespace ThePenwickPapers
 {
@@ -16,6 +17,7 @@ namespace ThePenwickPapers
         readonly Color eggColor;
         readonly GameObject outerEgg;
         readonly GameObject innerEgg;
+        readonly Light innerLight;
         readonly DaggerfallAudioSource dfAudio;
         readonly AudioClip sound;
 
@@ -36,8 +38,12 @@ namespace ThePenwickPapers
             
             innerEgg = CreateInnerEgg();
             innerEgg.transform.parent = outerEgg.transform;
-            innerEgg.transform.localPosition = Vector3.zero;
             innerEgg.transform.localScale = new Vector3(0.95f, 0.95f, 0.95f);
+
+            GameObject go = GameObjectHelper.InstantiatePrefab(DaggerfallUnity.Instance.Option_InteriorLightPrefab.gameObject, "Egg Glow", outerEgg.transform, Vector3.zero);
+            innerLight = go.GetComponent<Light>();
+            innerLight.range = 5f;
+            innerLight.intensity = 1f;
         }
 
 
@@ -84,6 +90,7 @@ namespace ThePenwickPapers
                 //brighten/dim color cyclically
                 Color emissionColor = eggColor * Mathf.Abs(Mathf.Cos(Time.time * 8));
                 mat.SetColor("_EmissionColor", emissionColor);
+                innerLight.color = emissionColor;
 
                 outerEgg.transform.Rotate(0.0f, 16.0f, 0.0f);
 

@@ -74,7 +74,7 @@ namespace ThePenwickPapers
         /// </summary>
         static void AddEncumbranceButton(DaggerfallCharacterSheetWindow characterSheetWindow)
         {
-            // Adding Encumbrance button
+            // Adding invisible clickable button over the 'Encumbrance' text label
             Button encumbranceButton = DaggerfallUI.AddButton(new Rect(4, 73, 132, 8), characterSheetWindow.NativePanel);
 
             encumbranceButton.OnMouseClick += EncumbranceButton_OnMouseClick;
@@ -103,10 +103,7 @@ namespace ThePenwickPapers
             }
 
             if (infoLabel != null)
-            {
-                modifiedWindows.Remove(inventoryWindow);
-                modifiedWindows.Add(inventoryWindow, infoLabel);
-            }
+                modifiedWindows[inventoryWindow] = infoLabel;
         }
 
 

@@ -132,7 +132,7 @@ namespace ThePenwickPapers
             else if (!GameManager.Instance.PlayerMotor.IsCrouching)
                 return false;
 
-            bool hitTerrain = hitInfo.collider is TerrainCollider || hitInfo.collider is MeshCollider;
+            bool hitTerrain = hitInfo.collider.gameObject.layer == 0;
             if (!hitTerrain)
                 return false;
 
@@ -455,10 +455,10 @@ namespace ThePenwickPapers
                 return;
             }
 
-            if (victim.EntityType == EntityTypes.EnemyMonster)
+            if (victim.Entity is EnemyEntity)
             {
                 EnemyEntity enemy = victim.Entity as EnemyEntity;
-                if (enemy.MobileEnemy.Weight < 20)
+                if (enemy.GetWeightInClassicUnits() < 10)
                 {
                     //small or intangible enemies won't trigger trap
                     return;
@@ -467,10 +467,10 @@ namespace ThePenwickPapers
 
             int chance = trapType.Reliability;
 
-            if (victim.EntityType == EntityTypes.Player)
+            if (victim.EntityType == EntityTypes.Player || victim.Entity.Team == MobileTeams.PlayerAlly)
             {
-                //players are less likely to trigger the trap that they set
-                chance -= GameManager.Instance.PlayerEntity.Stats.LiveLuck;
+                //players and their allies are less likely to trigger the trap that they set
+                chance -= victim.Entity.Stats.LiveLuck;
             }
 
             if (Dice100.SuccessRoll(chance))
@@ -588,15 +588,34 @@ namespace ThePenwickPapers
             settings.MagnitudePlusMin = (int)(4 * potency);
             settings.MagnitudePlusMax = (int)(8 * potency);
             settings.MagnitudePerLevel = 1;
-
-            EntityEffectBundle bundle = manager.CreateSpellBundle(effectKey, element, settings);
+            
+            EntityEffectBundle bundle = CreateBundle(effectKey, element, settings);
             AssignBundleFlags flags = AssignBundleFlags.BypassChance;
-            if (element == ElementTypes.None)
+            if (effectKey.Equals(LunaStick.EffectKey))
                 flags |= AssignBundleFlags.BypassSavingThrows;
 
             manager.AssignBundle(bundle, flags);
         }
 
+
+        /// <summary>
+        /// Creates a non-spell bundle.
+        /// </summary>
+        static EntityEffectBundle CreateBundle(string effectKey, ElementTypes element, EffectSettings? effectSettings = null)
+        {
+            EffectBundleSettings settings = new EffectBundleSettings()
+            {
+                Version = EntityEffectBroker.CurrentSpellVersion,
+                BundleType = element == ElementTypes.Poison ? BundleTypes.Poison : BundleTypes.None,
+                ElementType = element,
+                Effects = new EffectEntry[] { new EffectEntry(effectKey, effectSettings.Value) },
+            };
+
+            EntityEffectBundle bundle = new EntityEffectBundle(settings, GameManager.Instance.PlayerEntityBehaviour);
+            bundle.CasterEntityBehaviour = null; //...to prevent player aggro from trap
+
+            return bundle;
+        }
 
 
         /// <summary>

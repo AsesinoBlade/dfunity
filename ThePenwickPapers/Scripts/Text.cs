@@ -157,15 +157,15 @@ namespace ThePenwickPapers
 
         //Dirty Tricks
         NotEnoughLockpickingSkill,
+        NoFreeHand,
         OutOfPebbles,
         DoorChocked,
         DoorUnchocked,
-        NotYet,
 
 
         //Herbalism
         MortarAndPestle,
-        MustHaveMortarPestle,
+        MortarAndPestleUsage,
         HerbalismUnknown,
         HerbalismInterrupted,
         RemedyIngredientsNotInInventory,
@@ -241,7 +241,7 @@ namespace ThePenwickPapers
         //EnhancedInfo Descriptive words
         Absorbing, Adroit, Agile, Alluring, Aloof, Amorous, Amusing, Annoyed, Anxious,
         Appalled, Aspiring,
-        Baleful, Battered, Beefcake, Beguiling, Bitter, Bleak, Bloody, Bookish, Bored, Bowing, Brash,
+        Baleful, Battered, Beefcake, Befuddled, Beguiling, Bitter, Bleak, Bloody, Bookish, Bored, Bowing, Brash,
         Brave, Brisk, Brooding, Buff, Bumbling, Burning, Busy,
         Cagey, Calloused, Canny, Captivating, Cerebral, Chaffing, Charming, Chilly, Clammy, Clandestine,
         Coarse, Cocky, Comely, Comical, Concerned, Confused, Contemplative, Cool, Coy, Covert, Crafty,
@@ -259,7 +259,7 @@ namespace ThePenwickPapers
         Jovial, Joyless,
         Klutzy,
         Leery, Limber, Lithe, Lively, Lorn, Lurid, Lusty,
-        Mangled, Miffed, Miserly, Morbid, Moody, Mortified, Mucky, Muddled, Muddy, Mysterious,
+        Mangled, Miffed, Mirthless, Miserly, Morbid, Moody, Mortified, Mucky, Muddled, Muddy, Mysterious,
         Naughty, Nauseated, Nervous, Neutral, Nimble, Numb,
         Obedient, Obscure, Organized,
         Paralyzed, Paranoid, Perplexed, Perplexing, Perspiring, Pious, Playful, Poignant, Poisoned, Polished,
@@ -276,9 +276,8 @@ namespace ThePenwickPapers
         Warm, Wary, Weakening, Weary, Winking, Wise, Withdrawn, Wounded, Wry,
         Zealous,
 
-
-
     }
+
 
     public static class TextExtension
     {

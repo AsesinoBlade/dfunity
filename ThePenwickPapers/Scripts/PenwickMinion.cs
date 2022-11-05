@@ -120,7 +120,7 @@ namespace ThePenwickPapers
                 entity.CurrentMagicka = entity.MaxMagicka;
                 entity.CurrentFatigue = entity.MaxFatigue;
 
-                //Only lichen can heal on their own, not other undead or atronachs
+                //Only liches can heal on their own, not other undead or atronachs
                 if (mobileEnemy.ID == (int)MobileTypes.Lich || mobileEnemy.ID == (int)MobileTypes.AncientLich)
                 {
                     entity.CurrentHealth = entity.MaxHealth;

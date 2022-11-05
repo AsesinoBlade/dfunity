@@ -349,10 +349,9 @@ namespace ThePenwickPapers
                 if (CanReanimate(corpse))
                 {
                     //must be near enough and looking in the direction of the corpse
-                    Vector3 casterXZ = Vector3.ProjectOnPlane(caster.transform.position, Vector3.up);
-                    Vector3 targetXZ = Vector3.ProjectOnPlane(corpse.transform.position, Vector3.up);
-                    Vector3 direction = targetXZ - casterXZ;
-                    if (Vector3.Angle(caster.transform.forward, direction) < 25)
+                    Vector3 direction = corpse.transform.position - caster.transform.position;
+                    Vector3 directionXZ = Vector3.ProjectOnPlane(direction, Vector3.up);
+                    if (Vector3.Angle(caster.transform.forward, directionXZ) < 25)
                     {
                         chosenVessel = corpse;
                         return true;
