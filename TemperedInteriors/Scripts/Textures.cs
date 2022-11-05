@@ -2,12 +2,11 @@
 // Author:      DunnyOfPenwick
 // Origin Date: October 2022
 
-using DaggerfallWorkshop;
-using DaggerfallWorkshop.Game.Utility.ModSupport;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DaggerfallWorkshop;
+using DaggerfallWorkshop.Game.Utility.ModSupport;
 
 
 namespace TemperedInteriors
@@ -20,6 +19,10 @@ namespace TemperedInteriors
         BedSideLow,
         BedTopHi,
         BedTopLow,
+        WardrobeFrontHi,
+        WardrobeFrontEdgeHi,
+        WardrobeSideEdgeHi,
+        WardrobeSideHi,
         DoorHi,
         CarpetLow,
         CarpetEdgeLow1,

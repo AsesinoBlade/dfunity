@@ -2,12 +2,12 @@
 // Author:      DunnyOfPenwick
 // Origin Date: October 2022
 
-using DaggerfallWorkshop;
-using DaggerfallWorkshop.Utility;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using DaggerfallWorkshop;
+using DaggerfallWorkshop.Utility;
+
 
 namespace TemperedInteriors
 {
@@ -15,15 +15,15 @@ namespace TemperedInteriors
     {
         Top,
         Bottom,
-        Same,
+        Middle,
         Ground
     }
 
     public static class Utility
     {
         static readonly Regex rgxTextureName = new Regex(@"(\d+)\D+(\d+)");
-        static DaggerfallUnity dfUnity = DaggerfallUnity.Instance;
-        static Dictionary<System.Object, Texture2D> textureDict = new Dictionary<object, Texture2D>();
+        static readonly DaggerfallUnity dfUnity = DaggerfallUnity.Instance;
+        static readonly Dictionary<System.Object, Texture2D> textureDict = new Dictionary<object, Texture2D>();
         static System.Random random;
 
 
@@ -42,11 +42,14 @@ namespace TemperedInteriors
         public static float Random(float min, float max)
         {
             float range = max - min;
+            if (range <= 0)
+                return min;
 
             float scale = (float)random.NextDouble();
             float offset = range * scale;
 
-            return min + offset;
+            float value = min + offset;
+            return value;
         }
 
 
@@ -55,7 +58,8 @@ namespace TemperedInteriors
         /// </summary>
         public static int Random(int min, int max)
         {
-            return random.Next(min, max);
+            int value = random.Next(min, max);
+            return value;
         }
 
 
@@ -65,7 +69,9 @@ namespace TemperedInteriors
         public static uint GenerateHashValue(DaggerfallInterior interior, Vector3 location)
         {
             uint hash = (uint)interior.name.GetHashCode();
-            hash += (uint)location.x + (uint)location.y + (uint)location.z;
+            hash += (uint)(location.x * 10);
+            hash += (uint)(location.y * 10);
+            hash += (uint)(location.z * 10);
 
             return hash;
         }
@@ -78,7 +84,7 @@ namespace TemperedInteriors
         {
             Match match = rgxTextureName.Match(renderer.material.ToString());
             if (match.Groups.Count != 3)
-                return (0,0);
+                return (0, 0);
 
             (int, int) textureValue = (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
 
@@ -103,12 +109,12 @@ namespace TemperedInteriors
             if (Physics.Raycast(location, Vector3.down, out RaycastHit hitInfo))
                 return Vector3.Distance(location, hitInfo.point);
             else
-                return 9999;
+                return 999;
         }
 
 
         /// <summary>
-        /// Finds the location of the floor beneath a location.
+        /// Finds the location of the lower surface beneath a location.
         /// </summary>
         public static Vector3 FindGround(Vector3 location)
         {
@@ -120,7 +126,7 @@ namespace TemperedInteriors
 
 
         /// <summary>
-        /// Finds the location of the ceiling above a location.
+        /// Finds the location of the upper surface above a location.
         /// </summary>
         public static Vector3 FindCeiling(Vector3 location)
         {
@@ -139,7 +145,7 @@ namespace TemperedInteriors
             (int archive, int record) = replacement;
 
             GameObject go = GameObjectHelper.CreateDaggerfallBillboardGameObject(archive, record, flat.transform.parent);
-            go.name = "Tempered Interiors Replacement for " + flat.name;
+            go.name = flat.name + " (Tempered Interiors Replacement)";
 
             SwapFlat(flat, go, alignment);
         }

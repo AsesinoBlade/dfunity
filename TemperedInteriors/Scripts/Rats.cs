@@ -10,12 +10,13 @@ using DaggerfallWorkshop.Game.Entity;
 using DaggerfallWorkshop.Utility;
 using DaggerfallWorkshop.Game.Utility;
 
+
 namespace TemperedInteriors
 {
 
     public static class Rats
     {
-        public static readonly string RatObjectName = "Rat Vermin";
+        public static readonly string RatObjectName = "Tempered Interiors Rat Vermin";
 
         static Rats()
         {
@@ -80,12 +81,13 @@ namespace TemperedInteriors
             rat.transform.localScale = new Vector3(scale, scale, scale);
 
             CharacterController controller = rat.GetComponent<CharacterController>();
+            controller.height = 0.65f * size;
             GameObjectHelper.AlignControllerToGround(controller);
 
             //modify rat audio characteristics to match smaller size
             DaggerfallAudioSource dfAudio = rat.GetComponent<DaggerfallAudioSource>();
             dfAudio.AudioSource.pitch += (5f - size) / 4f;
-            dfAudio.AudioSource.volume /= 4f;
+            dfAudio.AudioSource.volume /= 5f;
 
             go.SetActive(true);
 

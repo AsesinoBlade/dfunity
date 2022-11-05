@@ -2,10 +2,8 @@
 // Author:      DunnyOfPenwick
 // Origin Date: October 2022
 
-using DaggerfallWorkshop;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using DaggerfallWorkshop;
 
 
 namespace TemperedInteriors

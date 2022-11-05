@@ -2,18 +2,100 @@
 // Author:      DunnyOfPenwick
 // Origin Date: October 2022
 
+using UnityEngine;
 using DaggerfallConnect;
 using DaggerfallWorkshop;
 using DaggerfallWorkshop.Utility;
-using System.Collections.Generic;
-using UnityEngine;
-
-
+using DaggerfallWorkshop.Game;
 
 namespace TemperedInteriors
 {
     public static class Lighting
     {
+        static PlayerAmbientLight playerAmbientLight;
+        static Color defaultNightAmbient;
+        static Color defaultDayAmbient;
+        static Vector3 groundLevelPosition;
+
+
+        /// <summary>
+        /// Record the initial default interior ambient light colors.
+        /// </summary>
+        public static void Init()
+        {
+            playerAmbientLight = GameManager.Instance.PlayerObject.GetComponent<PlayerAmbientLight>();
+
+            if (DaggerfallUnity.Settings.AmbientLitInteriors)
+            {
+                defaultNightAmbient = playerAmbientLight.InteriorNightAmbientLight_AmbientOnly;
+                defaultDayAmbient = playerAmbientLight.InteriorAmbientLight_AmbientOnly;
+            }
+            else
+            {
+                defaultNightAmbient = playerAmbientLight.InteriorNightAmbientLight;
+                defaultDayAmbient = playerAmbientLight.InteriorAmbientLight;
+            }
+        }
+
+
+        /// <summary>
+        /// Try to determine where 'ground level' is by looking for the lowest entry door.
+        /// </summary>
+        public static void SetGroundLevel(PlayerEnterExit.TransitionEventArgs args)
+        {
+            if (!args.DaggerfallInterior.FindLowestOuterInteriorDoor(out Vector3 pos, out _))
+                pos = GameManager.Instance.PlayerObject.transform.position;
+
+            groundLevelPosition = pos + Vector3.down; //close to floor
+        }
+
+
+        /// <summary>
+        /// Adjust interior ambient light level by depth below ground.
+        /// </summary>
+        public static void AdjustAmbientLight()
+        {
+            float depth = GameManager.Instance.PlayerObject.transform.position.y - groundLevelPosition.y + 0.2f;
+
+            depth = Mathf.Clamp(depth, -10f, 0f);
+
+            float step = 1 + (depth / -3f);
+
+            float scaler = 1f / step;
+
+            Color ambientLightColor;
+            if (DaggerfallUnity.Instance.WorldTime.Now.IsNight)
+                ambientLightColor = defaultNightAmbient * scaler;
+            else
+                ambientLightColor = defaultDayAmbient * scaler;
+
+            SetAmbientLight(ambientLightColor);
+        }
+
+
+        /// <summary>
+        /// Sets the ambient light color values of the player object PlayerAmbientLight component.
+        /// </summary>
+        static void SetAmbientLight(Color ambientLightColor)
+        {
+            if (DaggerfallUnity.Instance.WorldTime.Now.IsNight)
+            {
+                if (DaggerfallUnity.Settings.AmbientLitInteriors)
+                    playerAmbientLight.InteriorNightAmbientLight_AmbientOnly = ambientLightColor;
+                else
+                    playerAmbientLight.InteriorNightAmbientLight = ambientLightColor;
+            }
+            else
+            {
+                if (DaggerfallUnity.Settings.AmbientLitInteriors)
+                    playerAmbientLight.InteriorAmbientLight_AmbientOnly = ambientLightColor;
+                else
+                    playerAmbientLight.InteriorAmbientLight = ambientLightColor;
+            }
+
+        }
+
+
         /// <summary>
         /// Potentially swap light with another to match building quality
         /// </summary>
@@ -145,12 +227,9 @@ namespace TemperedInteriors
             if (record != 11 && record != 9 && record != 23)
                 return;
 
-            //Locate ceiling
-            if (!Physics.Raycast(go.transform.position, Vector3.up, out RaycastHit hitInfo))
-                return;
-
             //Calculate length of support needed
-            float distance = Vector3.Distance(go.transform.position, hitInfo.point);
+            Vector3 ceiling = Utility.FindCeiling(go.transform.position);
+            float distance = Vector3.Distance(go.transform.position, ceiling);
             Vector3 extents = go.GetComponent<MeshRenderer>().bounds.extents;
             float length = distance - extents.y;
             if (length < 0.1f)

@@ -8,19 +8,18 @@ using UnityEngine;
 using DaggerfallWorkshop.Game;
 using DaggerfallWorkshop.Game.Utility.ModSupport;
 using DaggerfallWorkshop;
-using DaggerfallWorkshop.Game.Utility.ModSupport.ModSettings;
 using DaggerfallConnect;
 using DaggerfallConnect.Arena2;
 using DaggerfallWorkshop.Utility;
 using DaggerfallWorkshop.Game.Questing;
 using DaggerfallWorkshop.Game.Utility;
+using System;
 
 namespace TemperedInteriors
 {
     public class TemperedInteriorsMod : MonoBehaviour
     {
         static Mod mod;
-        static DaggerfallUnity dfUnity = DaggerfallUnity.Instance;
 
         public static TemperedInteriorsMod Instance;
 
@@ -31,11 +30,6 @@ namespace TemperedInteriors
         public FactionFile.FactionIDs Faction;
         public Vector3 ProprietorLocation;
         public ClimateBases ClimateBase;
-        public List<GameObject> Doors;
-
-        //??????????????
-        float lastTriggerTime;
-        TownUtility townUtility;
 
 
 
@@ -57,11 +51,10 @@ namespace TemperedInteriors
         /// </summary>
         public bool IsVisibleToProprietor(DaggerfallBillboard flat)
         {
-            if (Physics.Raycast(flat.transform.position, Vector3.down, out RaycastHit hitInfo, 20f) == false)
-                return false;
+            Vector3 groundPos = Utility.FindGround(flat.transform.position);
 
             //Check with flat position near eye level
-            Vector3 eyeLevelPos = hitInfo.point + (Vector3.up * 2);
+            Vector3 eyeLevelPos = groundPos + (Vector3.up * 2);
 
             Vector3 proprietorEyePos = ProprietorLocation + Vector3.up;
 
@@ -70,9 +63,9 @@ namespace TemperedInteriors
             float range = Mathf.Min(direction.magnitude, 30f);
 
             Ray ray = new Ray(proprietorEyePos, direction.normalized);
-            bool hit = Physics.Raycast(ray, out hitInfo, range, 1);
+            bool blocked = Physics.Raycast(ray, range, 1);
 
-            return hit == false;
+            return blocked == false;
         }
 
 
@@ -94,6 +87,8 @@ namespace TemperedInteriors
 
             UsingHiResTextures = ModManager.Instance.GetMod("DREAM - TEXTURES") != null;
 
+            Lighting.Init();
+
             Debug.Log("Finished Start(): TemperedInteriors");
         }
 
@@ -101,59 +96,11 @@ namespace TemperedInteriors
 
         void Update()
         {
-            if (TransitionArgs != null)
-            {
-                try
-                {
-                    AdjustInterior();
-                }
-                finally
-                {
-                    TransitionArgs = null;
-                }
-            }
+            if (GameManager.IsGamePaused)
+                return;
 
-            //ShowInfo();
-        }
-
-
-        /// <summary>
-        /// Info gathering code, for debugging and testing
-        /// </summary>
-        void ShowInfo()
-        {
-            if (townUtility == null)
-                townUtility = new TownUtility();
-
-
-            if (InputManager.Instance.ActionStarted(InputManager.Actions.SwingWeapon))
-            {
-                Camera camera = GameManager.Instance.MainCamera;
-                int playerLayerMask = ~(1 << LayerMask.NameToLayer("Player"));
-
-                Ray ray = new Ray(camera.transform.position, camera.transform.forward);
-                float maxDistance = 16;
-
-                if (Physics.Raycast(ray, out RaycastHit hitInfo, maxDistance, playerLayerMask))
-                {
-                    float sizeY = hitInfo.collider.bounds.size.y;
-                    Debug.Log("hitY=" + hitInfo.point.y + " objY=" + hitInfo.collider.transform.position.y + "  objHeight=" + sizeY + "  obj=" + hitInfo.collider.gameObject + "  " + Time.time);
-                }
-            }
-
-
-            if (GameManager.Instance.PlayerGPS.IsPlayerInTown())
-            {
-                if (Time.time > lastTriggerTime + 2)
-                {
-                    lastTriggerTime = Time.time;
-
-                    if (GameManager.Instance.PlayerEnterExit.IsPlayerInsideBuilding)
-                        Debug.Log("Location: " + GameManager.Instance.PlayerObject.transform.position);
-                    else
-                        townUtility.ShowInfo();
-                }
-            }
+            if (GameManager.Instance.PlayerEnterExit.IsPlayerInsideBuilding)
+                Lighting.AdjustAmbientLight();
         }
 
 
@@ -162,8 +109,18 @@ namespace TemperedInteriors
         /// </summary>
         void PlayerEnterExit_OnTransitionInterior(PlayerEnterExit.TransitionEventArgs args)
         {
-            //AdjustInterior() will be called on next Update() after transition is fully complete
             TransitionArgs = args;
+
+            try
+            {
+                Lighting.SetGroundLevel(TransitionArgs);
+
+                AdjustInterior();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError("Exception in TemperedInteriorsMod: " + e.ToString());
+            }
         }
 
 
@@ -172,20 +129,14 @@ namespace TemperedInteriors
         /// </summary>
         void AdjustInterior()
         {
-
             //Seeded random number generator to keep random values for the building consistent through the day
             int seed = (int)Utility.GenerateHashValue(TransitionArgs.DaggerfallInterior, Vector3.zero);
             seed += DaggerfallUnity.Instance.WorldTime.Now.DayOfYear;
             Utility.Init(seed);
 
-            Doors = new List<GameObject>();
-
             Quality = TransitionArgs.DaggerfallInterior.BuildingData.Quality;
             BuildingType = TransitionArgs.DaggerfallInterior.BuildingData.BuildingType;
             Faction = (FactionFile.FactionIDs)GameManager.Instance.PlayerEnterExit.BuildingDiscoveryData.factionID;
-
-            //DaggerfallUI.AddHUDText(BuildingType.ToString());
-            //DaggerfallUI.AddHUDText("Building quality " + Quality);
 
             GameManager game = GameManager.Instance;
 
@@ -198,12 +149,20 @@ namespace TemperedInteriors
 
             ProprietorLocation = FindProprietor();
 
+
+            List<GameObject> doors = GetDoors();
+
+            CheckReverseDoorHinges(doors);
+
+            foreach (GameObject door in doors)
+                ChangeDoorTexture(door);
+
+
             AdjustModels();
 
             AdjustFlats();
 
-            Filth.Add();
-
+            Filth.Add(doors);
         }
 
 
@@ -227,6 +186,60 @@ namespace TemperedInteriors
 
 
 
+        /// <summary>
+        /// Returns list of interior action doors (model 9000).
+        /// </summary>
+        List<GameObject> GetDoors()
+        {
+            Regex rgx = new Regex(@"ID=(\d+)");
+
+            List<GameObject> doors = new List<GameObject>();
+
+            GameObject[] models = GetChildObjects("Action Doors");
+
+            foreach (GameObject model in models)
+            {
+                Match match = rgx.Match(model.name);
+                if (match.Groups.Count != 2)
+                    continue;
+
+                uint modelID = uint.Parse(match.Groups[1].Value);
+                if (modelID == 9000) //interior door
+                    doors.Add(model);
+            }
+
+            return doors;
+        }
+
+
+        /// <summary>
+        /// If door is blocked from opening by furniture or a wall, then reverse the hinges.
+        /// This needs to be done before the door's Start() method is called to initialize the door correctly.
+        /// </summary>
+        void CheckReverseDoorHinges(List<GameObject> doors)
+        {
+            foreach (GameObject door in doors)
+            {
+                Renderer renderer = door.GetComponent<MeshRenderer>();
+
+                //Doing raycasts from lower-center of door
+                Vector3 pos = renderer.bounds.center;
+                pos += Vector3.down * (renderer.bounds.extents.y - 0.2f);
+                if (Physics.Raycast(pos, door.transform.forward, 1.2f))
+                {
+                    //Blocked in forward direction, check if NOT blocked in reverse direction
+                    if (!Physics.Raycast(pos, -door.transform.forward, 1.2f))
+                    {
+                        //Rotate door 180 degrees around y-axis, centered in middle of model
+                        door.transform.RotateAround(renderer.bounds.center, Vector3.up, 180);
+                    }
+                }
+
+            }
+        }
+
+
+
         static readonly List<uint> chairs = new List<uint>() { 41100, 41101, 41103, 41119, 41102, 41122, 41123 };
         static readonly List<uint> tables = new List<uint>() { 41130, 41121, 41112, 51103, 41108, 51104, 41109, 41110 };
 
@@ -236,11 +249,11 @@ namespace TemperedInteriors
         /// </summary>
         void AdjustModels()
         {
-            Regex rgx = new Regex(@"(\d+)");
+            Regex rgx = new Regex(@"ID=(\d+)");
 
-            DaggerfallMesh[] models = FindObjectsOfType<DaggerfallMesh>();
+            GameObject[] models = GetChildObjects("Models");
 
-            foreach (DaggerfallMesh model in models)
+            foreach (GameObject model in models)
             {
                 if (model.GetComponent<QuestResourceBehaviour>())
                     continue; //skip quest objects
@@ -253,49 +266,48 @@ namespace TemperedInteriors
 
                 if (modelID >= 41000 && modelID <= 41002) //beds
                 {
-                    ChangeBedTextures(model.gameObject);
+                    ChangeBedTextures(model);
                 }
                 else if (chairs.Contains(modelID)) //chairs
                 {
                     bool throne = modelID == 41102 || modelID == 41122 || modelID == 41123;
-                    ChangeChairTextures(model.gameObject, throne);
+                    ChangeChairTextures(model, throne);
                 }
                 else if (tables.Contains(modelID)) //tables
                 {
-                    ChangeTableTextures(model.gameObject);
+                    ChangeTableTextures(model, modelID);
                 }
-                else if (modelID == 41126 || modelID == 41105 || modelID == 41106)
+                else if (modelID == 41126 || modelID == 41105 || modelID == 41106) //benches
                 {
-                    ChangeBenchTextures(model.gameObject);
+                    ChangeBenchTextures(model);
+                }
+                else if (modelID == 41800 || modelID == 41801 || modelID == 41003 || modelID == 41004) //wardrobes
+                {
+                    ChangeWardrobeTextures(model);
                 }
                 else if (modelID >= 74800 && modelID <= 74808) //big carpets
                 {
-                    ChangeCarpetTextures(model.gameObject);
+                    ChangeCarpetTextures(model);
                 }
                 else if (modelID >= 75800 && modelID <= 75808) //small carpets
                 {
-                    ChangeCarpetTextures(model.gameObject);
+                    ChangeCarpetTextures(model);
                 }
                 else if (modelID >= 42500 && modelID <= 42535) //banners
                 {
-                    ChangeTapestryTextures(model.gameObject);
+                    ChangeTapestryTextures(model);
                 }
                 else if (modelID >= 42536 && modelID <= 42571) //tapestries
                 {
-                    ChangeTapestryTextures(model.gameObject);
+                    ChangeTapestryTextures(model);
                 }
                 else if (modelID >= 51115 && modelID <= 51120) //paintings
                 {
-                    ModifyPainting(model.gameObject);
+                    ModifyPainting(model);
                 }
                 else if (modelID == 41120 && Quality < 7) //organ
                 {
-                    GameObject.Destroy(model.gameObject);
-                }
-                else if (modelID == 9000) //interior door
-                {
-                    Doors.Add(model.gameObject);
-                    ChangeDoorTexture(model.gameObject);
+                    GameObject.Destroy(model);
                 }
                 else
                 {
@@ -303,6 +315,27 @@ namespace TemperedInteriors
                 }
 
             }
+
+
+        }
+
+
+        /// <summary>
+        /// Returns child GameObjects that are parented to the named object.
+        /// </summary>
+        GameObject[] GetChildObjects(string parentName)
+        {
+            Transform root = TransitionArgs.DaggerfallInterior.transform.Find(parentName);
+            if (root == null)
+                return new GameObject[0];
+
+            GameObject[] childObjects = new GameObject[root.childCount];
+            for (int i = 0; i < root.childCount; ++i)
+            {
+                childObjects[i] = root.GetChild(i).gameObject;
+            }
+
+            return childObjects;
         }
 
 
@@ -367,7 +400,7 @@ namespace TemperedInteriors
         /// <summary>
         /// Changing table texture to match building quality.
         /// </summary>
-        void ChangeTableTextures(GameObject table)
+        void ChangeTableTextures(GameObject table, uint modelID)
         {
             (int, int) texture;
 
@@ -378,10 +411,10 @@ namespace TemperedInteriors
                 texture = (67, 2);
                 scaleDown = false;
             }
-            else if (Quality > 11)
+            else if (Quality > 11 && modelID != 41121)
                 texture = (366, 4);
             else if (Quality < 5)
-                texture = (321, 2); //texture = (171, 0);
+                texture = (321, 2);
             else
                 return;
 
@@ -415,6 +448,21 @@ namespace TemperedInteriors
 
 
         /// <summary>
+        /// Changing wardrobe texture to match building quality.
+        /// </summary>
+        void ChangeWardrobeTextures(GameObject wardrobe)
+        {
+            if (Quality > 10)
+            {
+                Utility.SwapModelTexture(wardrobe, (90, 8), Textures.WardrobeFrontHi);
+                Utility.SwapModelTexture(wardrobe, (90, 9), Textures.WardrobeFrontEdgeHi);
+                Utility.SwapModelTexture(wardrobe, (90, 10), Textures.WardrobeSideEdgeHi);
+                Utility.SwapModelTexture(wardrobe, (90, 11), Textures.WardrobeSideHi);
+            }
+        }
+
+
+        /// <summary>
         /// Changing (interior) door textures to match building quality.
         /// </summary>
         void ChangeDoorTexture(GameObject door)
@@ -423,7 +471,16 @@ namespace TemperedInteriors
 
             if (Quality > 13)
             {
+                //Current door texture depends on climate.
+                //Attempting to check for and replace all likely values.
+                Utility.SwapModelTexture(door, (74, 0), Textures.DoorHi, scaleDown);
+                Utility.SwapModelTexture(door, (174, 0), Textures.DoorHi, scaleDown);
                 Utility.SwapModelTexture(door, (374, 0), Textures.DoorHi, scaleDown);
+                Utility.SwapModelTexture(door, (474, 0), Textures.DoorHi, scaleDown);
+
+                //try to swap door edge texture as well
+                Utility.SwapModelTexture(door, (0, 74), (0, 45));
+                Utility.SwapModelTexture(door, (67, 12), (67, 10));
             }
         }
 
@@ -567,7 +624,6 @@ namespace TemperedInteriors
                 GameObject.Destroy(flat.gameObject);
 
         }
-
 
 
     } //class TemperedInteriorsMod

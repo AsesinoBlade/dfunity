@@ -1,16 +1,15 @@
 {
     "ModTitle": "Tempered-Interiors",
-    "ModVersion": "0.80",
+    "ModVersion": "0.81",
     "ModAuthor": "DunnyOfPenwick",
     "ContactInfo": "http://dfworkshop.net",
     "DFUnity_Version": "0.14.4",
-    "ModDescription": "Modifies interiors to more closely match building quality.",
+    "ModDescription": "Modifies building interiors to more closely match building quality.",
     "GUID": "a1ec918d-fad6-4050-99ec-d07043a0308a",
     "Files": [
         "Assets/Game/Mods/TemperedInteriors/Scripts/TemperedInteriorsMod.cs",
         "Assets/Game/Mods/TemperedInteriors/Scripts/Lighting.cs",
         "Assets/Game/Mods/TemperedInteriors/Scripts/Utility.cs",
-        "Assets/Game/Mods/TemperedInteriors/Scripts/TownUtility.cs",
         "Assets/Game/Mods/TemperedInteriors/Tempered-Interiors.dfmod.json",
         "Assets/Game/Mods/TemperedInteriors/Textures/BedEndHi.png",
         "Assets/Game/Mods/TemperedInteriors/Textures/BedEndLow.png",
@@ -30,6 +29,18 @@
         "Assets/Game/Mods/TemperedInteriors/Scripts/Rats.cs",
         "Assets/Game/Mods/TemperedInteriors/Scripts/StaticBillboard.cs",
         "Assets/Game/Mods/TemperedInteriors/Scripts/Textures.cs",
-        "Assets/Game/Mods/TemperedInteriors/Textures/FoodBit.png"
+        "Assets/Game/Mods/TemperedInteriors/Textures/FoodBit.png",
+        "Assets/Game/Mods/TemperedInteriors/Textures/WardrobeFrontHi.png",
+        "Assets/Game/Mods/TemperedInteriors/Textures/WardrobeSideHi.png",
+        "Assets/Game/Mods/TemperedInteriors/Textures/WardrobeFrontEdgeHi.png",
+        "Assets/Game/Mods/TemperedInteriors/Textures/WardrobeSideEdgeHi.png"
+    ],
+    "Dependencies": [
+        {
+            "Name": "dream - transparent windows",
+            "IsOptional": true,
+            "IsPeer": true,
+            "Version": "0.5.2"
+        }
     ]
 }
